@@ -9,13 +9,17 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Doctor, Dispensary } from '@/api/models';
 import { DoctorService, DispensaryService } from '@/api/services';
-import { Stethoscope, Calendar, Clock, CheckCircle } from 'lucide-react';
+import { Stethoscope, Calendar, Clock, CheckCircle, MapPin } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 
 const Index = () => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [dispensaries, setDispensaries] = useState<Dispensary[]>([]);
+  const [nearbyDispensaries, setNearbyDispensaries] = useState<Dispensary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
+  // Fetch doctors and all dispensaries
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -28,6 +32,11 @@ const Index = () => {
         setDispensaries(allDispensaries);
       } catch (error) {
         console.error('Error fetching data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load doctors and dispensaries.",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -36,6 +45,54 @@ const Index = () => {
     fetchData();
   }, []);
 
+  // Get dispensaries near user's location
+  const findNearbyDispensaries = () => {
+    setIsLoadingLocation(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          
+          // Get dispensaries within 5km radius
+          const nearby = await DispensaryService.getDispensariesByLocation(latitude, longitude, 5);
+          
+          setNearbyDispensaries(nearby);
+          
+          if (nearby.length === 0) {
+            toast({
+              title: "No nearby dispensaries",
+              description: "We couldn't find any dispensaries within 5km of your location.",
+            });
+          } else {
+            toast({
+              title: "Nearby dispensaries found",
+              description: `Found ${nearby.length} dispensaries near you.`,
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching nearby dispensaries:", error);
+          toast({
+            title: "Error",
+            description: "Failed to find nearby dispensaries.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsLoadingLocation(false);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        toast({
+          title: "Location access denied",
+          description: "Please enable location services to find nearby dispensaries.",
+          variant: "destructive"
+        });
+        setIsLoadingLocation(false);
+      }
+    );
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -43,12 +100,44 @@ const Index = () => {
       <main className="flex-grow">
         <HeroBanner />
         
+        {/* Location-based Dispensaries */}
+        <section className="py-8 bg-medical-50">
+          <div className="container mx-auto px-4">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <h2 className="text-xl md:text-2xl font-bold text-center">Find Dispensaries Near You</h2>
+              <Button 
+                onClick={findNearbyDispensaries} 
+                disabled={isLoadingLocation}
+                className="flex items-center space-x-2"
+              >
+                <MapPin size={18} />
+                <span>{isLoadingLocation ? "Finding nearby locations..." : "Use My Location"}</span>
+              </Button>
+            </div>
+            
+            {nearbyDispensaries.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-4">Dispensaries Near You</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {nearbyDispensaries.map((dispensary) => (
+                    <DispensaryCard 
+                      key={dispensary.id} 
+                      dispensary={dispensary} 
+                      doctorCount={dispensary.doctors.length}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+        
         {/* Featured Doctors */}
         <section className="py-16 bg-gray-50">
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between mb-10">
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Our Doctors !!!</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Our Doctors</h2>
                 <p className="text-gray-600">Meet our team of specialists</p>
               </div>
               <Button asChild variant="outline">

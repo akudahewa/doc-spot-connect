@@ -27,6 +27,10 @@ export interface Dispensary extends BaseModel {
   email: string;
   description?: string;
   doctors: string[]; // IDs of associated doctors
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 // Time slot configuration for doctor at a specific dispensary
