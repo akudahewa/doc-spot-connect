@@ -1,0 +1,403 @@
+
+import { useState, useEffect } from 'react';
+import { Calendar } from '@/components/ui/calendar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { format, addDays } from 'date-fns';
+import { useToast } from '@/components/ui/use-toast';
+import { DoctorService, DispensaryService, BookingService } from '@/api/services';
+import { Doctor, Dispensary, BookingStatus } from '@/api/models';
+
+interface BookingFormProps {
+  initialDoctorId?: string;
+  initialDispensaryId?: string;
+}
+
+const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps) => {
+  const { toast } = useToast();
+  
+  // Form state
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [dispensaries, setDispensaries] = useState<Dispensary[]>([]);
+  const [selectedDoctor, setSelectedDoctor] = useState<string>('');
+  const [selectedDispensary, setSelectedDispensary] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(addDays(new Date(), 1));
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<string>('');
+  
+  // Patient info
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [symptoms, setSymptoms] = useState('');
+  
+  // UI state
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  
+  // Load initial data
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch all doctors
+        const allDoctors = await DoctorService.getAllDoctors();
+        setDoctors(allDoctors);
+        
+        // Fetch all dispensaries
+        const allDispensaries = await DispensaryService.getAllDispensaries();
+        setDispensaries(allDispensaries);
+        
+        // Set initial selections if provided
+        if (initialDoctorId) {
+          setSelectedDoctor(initialDoctorId);
+        }
+        
+        if (initialDispensaryId) {
+          setSelectedDispensary(initialDispensaryId);
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load doctors and dispensaries',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchInitialData();
+  }, [initialDoctorId, initialDispensaryId, toast]);
+  
+  // Filter dispensaries when doctor changes
+  useEffect(() => {
+    const fetchDoctorDispensaries = async () => {
+      if (!selectedDoctor) return;
+      
+      try {
+        setIsLoading(true);
+        const doctorDispensaries = await DispensaryService.getDispensariesByDoctorId(selectedDoctor);
+        setDispensaries(doctorDispensaries);
+        
+        // If the currently selected dispensary is not in the list, reset it
+        if (selectedDispensary && !doctorDispensaries.some(d => d.id === selectedDispensary)) {
+          setSelectedDispensary('');
+        }
+      } catch (error) {
+        console.error('Error loading doctor dispensaries:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchDoctorDispensaries();
+  }, [selectedDoctor, selectedDispensary]);
+  
+  // Filter doctors when dispensary changes
+  useEffect(() => {
+    const fetchDispensaryDoctors = async () => {
+      if (!selectedDispensary) return;
+      
+      try {
+        setIsLoading(true);
+        const dispensaryDoctors = await DoctorService.getDoctorsByDispensaryId(selectedDispensary);
+        setDoctors(dispensaryDoctors);
+        
+        // If the currently selected doctor is not in the list, reset it
+        if (selectedDoctor && !dispensaryDoctors.some(d => d.id === selectedDoctor)) {
+          setSelectedDoctor('');
+        }
+      } catch (error) {
+        console.error('Error loading dispensary doctors:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchDispensaryDoctors();
+  }, [selectedDispensary, selectedDoctor]);
+  
+  // Load available slots when doctor, dispensary, and date are selected
+  useEffect(() => {
+    const fetchAvailableSlots = async () => {
+      if (!selectedDoctor || !selectedDispensary || !selectedDate) return;
+      
+      try {
+        setIsLoading(true);
+        const slots = await BookingService.getAvailableTimeSlots(
+          selectedDoctor,
+          selectedDispensary,
+          selectedDate
+        );
+        setAvailableSlots(slots);
+        setSelectedSlot('');
+      } catch (error) {
+        console.error('Error loading available slots:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load available time slots',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAvailableSlots();
+  }, [selectedDoctor, selectedDispensary, selectedDate, toast]);
+  
+  const handleBooking = async () => {
+    if (!selectedDoctor || !selectedDispensary || !selectedDate || !selectedSlot || !name || !phone) {
+      toast({
+        title: 'Missing information',
+        description: 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // In a real system, you would check if the patient already exists
+      // and either use their ID or create a new patient
+      
+      // For this demo, assume we create a booking directly
+      await BookingService.createBooking({
+        patientId: `temp-${phone}`, // In a real system, this would be a real patient ID
+        doctorId: selectedDoctor,
+        dispensaryId: selectedDispensary,
+        bookingDate: selectedDate,
+        timeSlot: selectedSlot,
+        status: BookingStatus.SCHEDULED,
+        symptoms: symptoms,
+      });
+      
+      toast({
+        title: 'Booking Confirmed!',
+        description: `Your appointment has been booked for ${format(selectedDate, 'PPP')} at ${selectedSlot}`,
+      });
+      
+      // Reset the form
+      setSelectedSlot('');
+      setName('');
+      setPhone('');
+      setEmail('');
+      setSymptoms('');
+      setCurrentStep(0);
+      
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      toast({
+        title: 'Booking Failed',
+        description: 'There was an error creating your booking. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Render the appropriate step
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="space-y-4">
+                <Label htmlFor="doctor">Select Doctor</Label>
+                <Select
+                  value={selectedDoctor}
+                  onValueChange={setSelectedDoctor}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="doctor" className="w-full">
+                    <SelectValue placeholder="Choose a doctor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {doctors.map((doctor) => (
+                      <SelectItem key={doctor.id} value={doctor.id}>
+                        {doctor.name} - {doctor.specialization}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-4">
+                <Label htmlFor="dispensary">Select Dispensary</Label>
+                <Select
+                  value={selectedDispensary}
+                  onValueChange={setSelectedDispensary}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger id="dispensary" className="w-full">
+                    <SelectValue placeholder="Choose a dispensary" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dispensaries.map((dispensary) => (
+                      <SelectItem key={dispensary.id} value={dispensary.id}>
+                        {dispensary.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <Label>Select Date</Label>
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                disabled={(date) => {
+                  // Disable past dates and dates more than 30 days in the future
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return date < today || date > addDays(today, 30);
+                }}
+                className="rounded-md border mx-auto"
+              />
+            </div>
+            
+            {selectedDoctor && selectedDispensary && selectedDate && (
+              <div className="space-y-4 mt-6">
+                <Label>Select Time Slot</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {isLoading ? (
+                    <div className="col-span-full text-center">Loading available slots...</div>
+                  ) : availableSlots.length === 0 ? (
+                    <div className="col-span-full text-center text-gray-500">
+                      No available slots for the selected date
+                    </div>
+                  ) : (
+                    availableSlots.map((slot) => (
+                      <Button
+                        key={slot}
+                        variant={selectedSlot === slot ? "default" : "outline"}
+                        className={selectedSlot === slot ? "bg-medical-600 hover:bg-medical-700" : ""}
+                        onClick={() => setSelectedSlot(slot)}
+                      >
+                        {slot}
+                      </Button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <div className="mt-6 flex justify-end">
+              <Button
+                onClick={() => setCurrentStep(1)}
+                disabled={!selectedDoctor || !selectedDispensary || !selectedDate || !selectedSlot}
+                className="bg-medical-600 hover:bg-medical-700"
+              >
+                Continue
+              </Button>
+            </div>
+          </>
+        );
+      
+      case 1:
+        return (
+          <>
+            <div className="space-y-6">
+              <div>
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your full name"
+                  required
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Enter your phone number"
+                  required
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="email">Email (Optional)</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="symptoms">Symptoms (Optional)</Label>
+                <Input
+                  id="symptoms"
+                  value={symptoms}
+                  onChange={(e) => setSymptoms(e.target.value)}
+                  placeholder="Briefly describe your symptoms"
+                  className="mt-1"
+                />
+              </div>
+              
+              <div className="pt-4 flex justify-between">
+                <Button variant="outline" onClick={() => setCurrentStep(0)}>
+                  Back
+                </Button>
+                
+                <Button
+                  onClick={handleBooking}
+                  disabled={isLoading || !name || !phone}
+                  className="bg-medical-600 hover:bg-medical-700"
+                >
+                  {isLoading ? 'Processing...' : 'Confirm Booking'}
+                </Button>
+              </div>
+            </div>
+          </>
+        );
+      
+      default:
+        return null;
+    }
+  };
+  
+  return (
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardContent className="pt-6">
+        <Tabs defaultValue="appointment" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="appointment">Book Appointment</TabsTrigger>
+            <TabsTrigger value="check" disabled>Check Booking Status</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="appointment">
+            <div className="space-y-6">
+              {renderStep()}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default BookingForm;
