@@ -1,73 +1,41 @@
-# Welcome to your Lovable project
 
-## Project info
+# MyClinic Management System
 
-**URL**: https://lovable.dev/projects/9dc0152d-5c2f-4e18-b5df-02945c10dffe
+## How to Run the Application
 
-## How can I edit this code?
+### 1. Start the API Server
 
-There are several ways of editing your application.
+The backend API server needs to be running before the frontend can connect to it:
 
-**Use Lovable**
+```bash
+# Method 1: Using the start script (recommended)
+# Make the script executable first (one-time setup)
+chmod +x start-server.sh
+# Then run the script
+./start-server.sh
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9dc0152d-5c2f-4e18-b5df-02945c10dffe) and start prompting.
+# Method 2: Manual setup
+cd server
+npm run setup
+npm start
+```
 
-Changes made via Lovable will be committed automatically to this repo.
+### 2. Start the Frontend
 
-**Use your preferred IDE**
+In a new terminal window:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+This will start the Vite development server and you can access the application at http://localhost:8080
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Test Credentials
 
-**Use GitHub Codespaces**
+- Email: admin@example.com
+- Password: 123456
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Notes
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/9dc0152d-5c2f-4e18-b5df-02945c10dffe) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- The API server runs at http://localhost:5000 by default
+- The MongoDB connection string is configured in server/.env
