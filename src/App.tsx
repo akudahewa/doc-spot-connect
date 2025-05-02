@@ -10,6 +10,7 @@ import Booking from "./pages/Booking";
 import Doctors from "./pages/Doctors";
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
+import AuthCallback from "./pages/AuthCallback";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminReports from "./pages/AdminReports";
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/doctors" element={<Doctors />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/callback" element={<AuthCallback />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

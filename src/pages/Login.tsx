@@ -16,7 +16,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Detect environment - local by default
 const IS_LOVABLE_ENVIRONMENT = window.location.hostname.includes('lovableproject.com') || 
-                              window.location.hostname.includes('lovable.app');
+                               window.location.hostname.includes('lovable.app');
                               
 // Force local development mode if needed
 const LOCAL_DEV_MODE = false;
@@ -29,6 +29,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [serverAvailable, setServerAvailable] = useState(false);
   const [checkingServer, setCheckingServer] = useState(true);
+  const [auth0Config, setAuth0Config] = useState<any>(null);
   
   // Check server availability and existing auth
   useEffect(() => {
@@ -53,6 +54,15 @@ const Login = () => {
         console.log('API server response:', response.data);
         setServerAvailable(true);
         console.log('Server connection successful');
+        
+        // Get Auth0 configuration
+        try {
+          const auth0Response = await axios.get(`${API_URL}/auth/config`);
+          console.log('Auth0 config:', auth0Response.data);
+          setAuth0Config(auth0Response.data);
+        } catch (error) {
+          console.error('Failed to get Auth0 configuration:', error);
+        }
         
         // If server is available, check existing auth
         checkExistingAuth();
@@ -85,7 +95,7 @@ const Login = () => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       try {
-        // Try using the token with the new API
+        // Try using the token with the API
         const response = await axios.get(`${API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -106,6 +116,30 @@ const Login = () => {
         localStorage.removeItem('current_user');
       }
     }
+  };
+  
+  // Function to handle Auth0 login
+  const handleAuth0Login = () => {
+    if (!auth0Config) {
+      toast({
+        title: 'Error',
+        description: 'Auth0 configuration not available',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    // Construct Auth0 authorization URL
+    const authUrl = `https://${auth0Config.domain}/authorize?` +
+      `response_type=code&` +
+      `client_id=${auth0Config.clientId}&` +
+      `redirect_uri=${encodeURIComponent(auth0Config.redirectUri)}&` +
+      `audience=${encodeURIComponent(auth0Config.audience)}&` +
+      `scope=openid profile email&` +
+      `state=${encodeURIComponent(window.location.origin)}`;
+    
+    // Redirect to Auth0 login page
+    window.location.href = authUrl;
   };
   
   const handleLogin = async (e: React.FormEvent) => {
@@ -135,6 +169,13 @@ const Login = () => {
       return;
     }
     
+    // Use Auth0 authentication in production
+    if (serverAvailable && auth0Config) {
+      handleAuth0Login();
+      return;
+    }
+    
+    // Fallback for regular login (this should not be used in production with Auth0)
     if (!email || !password) {
       toast({
         title: 'Error',
@@ -258,32 +299,37 @@ const Login = () => {
               )}
               
               <form onSubmit={handleLogin} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    <Button variant="link" className="p-0 h-auto text-xs text-medical-600">
-                      Forgot password?
-                    </Button>
-                  </div>
-                  <Input 
-                    id="password"
-                    type="password" 
-                    placeholder="Enter your password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
+                {/* Only show email/password fields in development mode or when Auth0 config is not available */}
+                {(IS_LOVABLE_ENVIRONMENT || LOCAL_DEV_MODE || !serverAvailable || !auth0Config) && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input 
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="password">Password</Label>
+                        <Button variant="link" className="p-0 h-auto text-xs text-medical-600">
+                          Forgot password?
+                        </Button>
+                      </div>
+                      <Input 
+                        id="password"
+                        type="password" 
+                        placeholder="Enter your password" 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
                 
                 <Button 
                   type="submit" 
@@ -291,14 +337,17 @@ const Login = () => {
                   disabled={isLoading || (checkingServer && !IS_LOVABLE_ENVIRONMENT && !LOCAL_DEV_MODE)}
                 >
                   {isLoading ? 'Logging in...' : 
-                   (checkingServer && !IS_LOVABLE_ENVIRONMENT && !LOCAL_DEV_MODE) ? 'Checking API...' : 'Login'}
+                   (checkingServer && !IS_LOVABLE_ENVIRONMENT && !LOCAL_DEV_MODE) ? 'Checking API...' : 
+                   (serverAvailable && auth0Config) ? 'Login with Auth0' : 'Login'}
                 </Button>
                 
-                <div className="text-center text-sm text-gray-500">
-                  <p>Demo credentials:</p>
-                  <p>Email: admin@example.com</p>
-                  <p>Password: 123456</p>
-                </div>
+                {(IS_LOVABLE_ENVIRONMENT || LOCAL_DEV_MODE || !serverAvailable || !auth0Config) && (
+                  <div className="text-center text-sm text-gray-500">
+                    <p>Demo credentials:</p>
+                    <p>Email: admin@example.com</p>
+                    <p>Password: 123456</p>
+                  </div>
+                )}
               </form>
             </CardContent>
           </Card>

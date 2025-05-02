@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -7,24 +8,16 @@ import { Button } from "@/components/ui/button";
 import { UserRole } from '@/api/models';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { AuthService } from '@/api/services/AuthService';
+import axios from 'axios';
 
-// Mock logic for getting logged in user
-const getLocalStorageUser = () => {
-  const userJson = localStorage.getItem('current_user');
-  if (userJson) {
-    try {
-      const user = JSON.parse(userJson);
-      console.log("Retrieved user from localStorage:", user.name);
-      return user;
-    } catch (e) {
-      console.error("Error parsing user from localStorage:", e);
-      return null;
-    }
-  }
-  console.log("No user found in localStorage");
-  return null;
-};
+// Get API URL from environment variables with fallback
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Detect environment - local by default
+const IS_LOVABLE_ENVIRONMENT = window.location.hostname.includes('lovableproject.com') || 
+                              window.location.hostname.includes('lovable.app');
+// Force local development mode if needed
+const LOCAL_DEV_MODE = false;
 
 const AdminDashboard = () => {
   const { toast } = useToast();
@@ -49,22 +42,36 @@ const AdminDashboard = () => {
           throw new Error("No authentication token found");
         }
         
-        // Get current user with token
-        console.log('Fetching current user with token:', token);
-        const user = await AuthService.getCurrentUser(token);
+        // Check if we're in a simulated environment
+        if (IS_LOVABLE_ENVIRONMENT || LOCAL_DEV_MODE) {
+          console.log('Using simulated authentication in development mode');
+          const user = JSON.parse(localStorage.getItem('current_user') || '{}');
+          if (!user || !user.id) {
+            throw new Error("Invalid user session");
+          }
+          setCurrentUser(user);
+          setIsLoading(false);
+          return;
+        }
         
-        if (!user) {
+        // Get current user with token from the API
+        console.log('Fetching current user with token from API...');
+        const response = await axios.get(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (!response.data) {
           console.log('User validation failed');
           throw new Error("Invalid user session");
         }
         
-        console.log('User authenticated successfully:', user.name);
+        console.log('User authenticated successfully:', response.data.name);
         
         // Update current user state
-        setCurrentUser(user);
+        setCurrentUser(response.data);
         
         // Update user data in localStorage in case it changed
-        localStorage.setItem('current_user', JSON.stringify(user));
+        localStorage.setItem('current_user', JSON.stringify(response.data));
         
       } catch (error: any) {
         console.error("Authentication error:", error.message);
@@ -99,6 +106,20 @@ const AdminDashboard = () => {
       description: "You have been successfully logged out"
     });
     navigate('/login', { replace: true });
+  };
+
+  // Check if user has a specific permission
+  const hasPermission = (permission: string) => {
+    if (IS_LOVABLE_ENVIRONMENT || LOCAL_DEV_MODE) {
+      // In development mode, allow all permissions
+      return true;
+    }
+    
+    if (!currentUser || !currentUser.permissions) {
+      return false;
+    }
+    
+    return currentUser.permissions.includes(permission);
   };
 
   // Show loading state

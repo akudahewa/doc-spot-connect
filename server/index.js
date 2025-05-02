@@ -11,6 +11,9 @@ const dispensaryRoutes = require('./routes/dispensaryRoutes');
 const timeSlotRoutes = require('./routes/timeSlotRoutes');
 const authRoutes = require('./routes/authRoutes');
 
+// Import middleware
+const { validateJwt } = require('./middleware/authMiddleware');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -30,10 +33,7 @@ mongoose.connect(MONGODB_URI)
     // We don't exit the process so the server still runs for development
   });
 
-// Routes
-app.use('/api/doctors', doctorRoutes);
-app.use('/api/dispensaries', dispensaryRoutes);
-app.use('/api/timeslots', timeSlotRoutes);
+// Public routes (no authentication required)
 app.use('/api/auth', authRoutes);
 
 // Basic route for testing
@@ -43,8 +43,21 @@ app.get('/', (req, res) => {
 
 // Add a route for the base /api path to help with testing
 app.get('/api', (req, res) => {
-  res.json({ status: 'API is running', endpoints: ['/api/doctors', '/api/dispensaries', '/api/timeslots', '/api/auth'] });
+  res.json({ 
+    status: 'API is running', 
+    endpoints: ['/api/doctors', '/api/dispensaries', '/api/timeslots', '/api/auth'],
+    auth: {
+      type: 'Auth0',
+      domain: process.env.AUTH0_DOMAIN,
+      audience: process.env.AUTH0_AUDIENCE
+    }
+  });
 });
+
+// Protected routes (authentication required)
+app.use('/api/doctors', validateJwt, doctorRoutes);
+app.use('/api/dispensaries', validateJwt, dispensaryRoutes);
+app.use('/api/timeslots', validateJwt, timeSlotRoutes);
 
 // Start server
 app.listen(PORT, () => {

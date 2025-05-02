@@ -13,7 +13,11 @@ const userSchema = new mongoose.Schema({
   },
   passwordHash: { 
     type: String, 
-    required: true 
+    required: false  // Not required with Auth0
+  },
+  auth0Id: {
+    type: String,
+    required: false
   },
   role: { 
     type: String, 

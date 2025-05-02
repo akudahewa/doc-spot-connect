@@ -2,60 +2,102 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const { auth } = require('express-oauth2-jwt-bearer');
+const { validateJwt, requireRole, ROLES } = require('../middleware/authMiddleware');
+const { ManagementClient } = require('auth0');
+const axios = require('axios');
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'myclinic-secret-key-change-in-production';
+// Setup Auth0 Management API client
+const auth0Management = new ManagementClient({
+  domain: process.env.AUTH0_DOMAIN,
+  clientId: process.env.AUTH0_CLIENT_ID,
+  clientSecret: process.env.AUTH0_CLIENT_SECRET,
+  scope: 'read:users update:users'
+});
 
-// Helper function to hash passwords
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
+// Public routes
+router.get('/config', (req, res) => {
+  res.json({
+    domain: process.env.AUTH0_DOMAIN,
+    clientId: process.env.AUTH0_CLIENT_ID,
+    audience: process.env.AUTH0_AUDIENCE,
+    redirectUri: process.env.AUTH0_CALLBACK_URL
+  });
+});
 
-// Login route
-router.post('/login', async (req, res) => {
+// Auth0 callback route
+router.post('/callback', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { code, state } = req.body;
     
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+    if (!code) {
+      return res.status(400).json({ message: 'Authorization code is required' });
     }
     
-    // Find user by email
-    const user = await User.findOne({ email });
+    // Exchange code for token with Auth0
+    const tokenResponse = await axios.post(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
+      grant_type: 'authorization_code',
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: process.env.AUTH0_CLIENT_SECRET,
+      code,
+      redirect_uri: process.env.AUTH0_CALLBACK_URL
+    });
+    
+    if (!tokenResponse.data || !tokenResponse.data.access_token) {
+      return res.status(400).json({ message: 'Failed to exchange code for token' });
+    }
+    
+    // Get user info with the access token
+    const userInfoResponse = await axios.get(`https://${process.env.AUTH0_DOMAIN}/userinfo`, {
+      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` }
+    });
+    
+    const auth0User = userInfoResponse.data;
+    
+    // Check if user exists in our database
+    let user = await User.findOne({ auth0Id: auth0User.sub });
     
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      // Fetch user roles from Auth0 management API
+      const auth0ManagementUser = await auth0Management.getUser({ id: auth0User.sub });
+      
+      // Extract roles and permissions
+      let userRole = 'dispensary_staff'; // Default role
+      if (auth0ManagementUser.app_metadata?.roles) {
+        if (auth0ManagementUser.app_metadata.roles.includes('super_admin')) {
+          userRole = 'super_admin';
+        } else if (auth0ManagementUser.app_metadata.roles.includes('dispensary_admin')) {
+          userRole = 'dispensary_admin';
+        }
+      }
+      
+      // Create new user in our database
+      user = new User({
+        name: auth0User.name || auth0User.nickname,
+        email: auth0User.email,
+        auth0Id: auth0User.sub,
+        role: userRole,
+        dispensaryIds: auth0ManagementUser.app_metadata?.dispensaryIds || [],
+        isActive: true,
+        lastLogin: new Date()
+      });
+      
+      await user.save();
+    } else {
+      // Update user login time
+      user.lastLogin = new Date();
+      await user.save();
     }
     
-    // Check password
-    const hashedPassword = hashPassword(password);
+    // Create our own JWT with user info and permissions
+    const token = tokenResponse.data.id_token;
     
-    if (user.passwordHash !== hashedPassword) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-    
-    if (!user.isActive) {
-      return res.status(403).json({ message: 'Account is disabled. Contact administrator.' });
-    }
-    
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-    
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
-    
-    // Send response
-    res.status(200).json({
+    res.json({
       token,
       user: {
         id: user._id,
+        auth0Id: user.auth0Id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -65,78 +107,102 @@ router.post('/login', async (req, res) => {
       message: 'Login successful'
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Auth0 callback error:', error);
+    res.status(500).json({ 
+      message: 'Authentication failed', 
+      error: error.message,
+      details: error.response?.data || 'No additional details'
+    });
   }
 });
 
-// Get current user
-router.get('/me', async (req, res) => {
+// Protected routes
+// Get current user profile 
+router.get('/me', validateJwt, async (req, res) => {
   try {
-    // Get token from authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Authorization token required' });
-    }
+    const auth0UserId = req.auth.payload.sub;
     
-    const token = authHeader.split(' ')[1];
-    
-    // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Get user with the ID from the token
-    const user = await User.findById(decoded.userId).select('-passwordHash');
+    // First, check if user exists in our database
+    let user = await User.findOne({ auth0Id: auth0UserId });
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      // If not in our database, fetch from Auth0 and create in our DB
+      const auth0User = await auth0Management.getUser({ id: auth0UserId });
+      
+      // Extract roles from Auth0 user metadata or app_metadata
+      const userRoles = auth0User.app_metadata?.roles || [];
+      const dispensaryIds = auth0User.app_metadata?.dispensaryIds || [];
+      
+      // Create new user in our database
+      user = new User({
+        name: auth0User.name || auth0User.nickname,
+        email: auth0User.email,
+        auth0Id: auth0UserId,
+        role: userRoles.includes(ROLES.SUPER_ADMIN) ? 'super_admin' : 
+              userRoles.includes(ROLES.DISPENSARY_ADMIN) ? 'dispensary_admin' : 
+              'dispensary_staff',
+        dispensaryIds: dispensaryIds,
+        isActive: true,
+        lastLogin: new Date()
+      });
+      
+      await user.save();
+    } else {
+      // Update last login time
+      user.lastLogin = new Date();
+      await user.save();
     }
     
-    if (!user.isActive) {
-      return res.status(403).json({ message: 'Account is disabled' });
-    }
+    // Get user permissions from Auth0
+    const token = req.headers.authorization.split(' ')[1];
+    const decodedToken = jwt.decode(token);
+    const permissions = decodedToken[`${process.env.AUTH0_AUDIENCE}/permissions`] || [];
     
     res.status(200).json({
       id: user._id,
+      auth0Id: user.auth0Id,
       name: user.name,
       email: user.email,
       role: user.role,
       dispensaryIds: user.dispensaryIds || [],
+      permissions: permissions,
       lastLogin: user.lastLogin
     });
   } catch (error) {
     console.error('Get current user error:', error);
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// Create an initial admin user (for setup purposes)
-router.post('/setup-admin', async (req, res) => {
+// Admin-only routes
+// Get all users (super_admin only)
+router.get('/users', validateJwt, requireRole([ROLES.SUPER_ADMIN]), async (req, res) => {
   try {
-    // Check if any users exist already
-    const userCount = await User.countDocuments();
+    const users = await User.find({}).select('-passwordHash');
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get users by dispensary (for dispensary admins)
+router.get('/users/dispensary/:dispensaryId', validateJwt, requireRole([ROLES.SUPER_ADMIN, ROLES.DISPENSARY_ADMIN]), async (req, res) => {
+  try {
+    const { dispensaryId } = req.params;
     
-    if (userCount > 0) {
-      return res.status(400).json({ message: 'Setup has already been completed' });
+    // For dispensary admin, check if they have access to this dispensary
+    if (req.user.roles.includes(ROLES.DISPENSARY_ADMIN)) {
+      const user = await User.findOne({ auth0Id: req.user.id });
+      if (!user.dispensaryIds.includes(dispensaryId)) {
+        return res.status(403).json({ message: 'Access denied to this dispensary' });
+      }
     }
     
-    // Create the initial admin user
-    const adminUser = new User({
-      name: 'Super Admin',
-      email: 'admin@example.com',
-      passwordHash: hashPassword('123456'), // Default password, should be changed
-      role: 'super_admin',
-      isActive: true,
-      lastLogin: new Date()
-    });
-    
-    await adminUser.save();
-    
-    res.status(201).json({ message: 'Initial admin user created successfully' });
+    const users = await User.find({ dispensaryIds: dispensaryId }).select('-passwordHash');
+    res.status(200).json(users);
   } catch (error) {
-    console.error('Setup admin error:', error);
+    console.error('Get dispensary users error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
