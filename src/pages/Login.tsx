@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Lock } from 'lucide-react';
-import { AuthService } from '@/api/services/AuthService';
 import axios from 'axios';
 
 // Add API URL for authentication
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const IS_LOVABLE_ENVIRONMENT = window.location.hostname.includes('lovableproject.com');
 
 const Login = () => {
   const { toast } = useToast();
@@ -21,11 +21,23 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [serverAvailable, setServerAvailable] = useState(true);
+  const [serverAvailable, setServerAvailable] = useState(!IS_LOVABLE_ENVIRONMENT);
   
   // Check server availability and existing auth
   useEffect(() => {
     const checkServer = async () => {
+      // If we're in Lovable's preview environment, don't attempt to connect to the server
+      if (IS_LOVABLE_ENVIRONMENT) {
+        console.log('Running in Lovable preview environment - API server connection skipped');
+        setServerAvailable(false);
+        toast({
+          title: 'Development Mode',
+          description: 'Running in Lovable preview environment. To test with the real API, deploy your server or run locally.',
+          variant: 'default'
+        });
+        return;
+      }
+      
       try {
         // Try to connect to the API server
         await axios.get(`${API_URL}`, { timeout: 5000 });
@@ -76,6 +88,28 @@ const Login = () => {
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (IS_LOVABLE_ENVIRONMENT) {
+      // In Lovable environment, simulate login success for testing UI
+      toast({
+        title: 'Development Mode Login',
+        description: 'In the Lovable preview, authentication is simulated. Server connection required for real login.',
+      });
+      
+      // Mock user for preview purposes
+      const mockUser = {
+        id: '1',
+        name: 'Demo Admin',
+        email: email || 'admin@example.com',
+        role: 'super_admin',
+      };
+      
+      localStorage.setItem('auth_token', 'mock-token-for-preview');
+      localStorage.setItem('current_user', JSON.stringify(mockUser));
+      
+      setTimeout(() => navigate('/admin/dashboard', { replace: true }), 300);
+      return;
+    }
     
     if (!serverAvailable) {
       toast({
@@ -179,14 +213,29 @@ const Login = () => {
                 </div>
               </div>
               <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
+              {IS_LOVABLE_ENVIRONMENT && (
+                <p className="text-sm text-amber-600 mt-2">
+                  Running in Lovable preview mode. Login will be simulated.
+                </p>
+              )}
             </CardHeader>
             <CardContent>
-              {!serverAvailable && (
+              {!serverAvailable && !IS_LOVABLE_ENVIRONMENT && (
                 <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
                   <p className="font-medium">API Server Unavailable</p>
                   <p className="text-sm mt-1">
                     The API server is not running. Please start the server by running:<br />
                     <code className="bg-gray-100 px-2 py-1 rounded">node server/index.js</code>
+                  </p>
+                </div>
+              )}
+              
+              {IS_LOVABLE_ENVIRONMENT && (
+                <div className="mb-6 p-3 bg-blue-50 border border-blue-200 text-blue-600 rounded-md">
+                  <p className="font-medium">Lovable Preview Environment</p>
+                  <p className="text-sm mt-1">
+                    You're viewing this in the Lovable preview. The login process will be simulated.<br />
+                    For full functionality, deploy your API server or run locally.
                   </p>
                 </div>
               )}
@@ -224,7 +273,7 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-medical-600 hover:bg-medical-700"
-                  disabled={isLoading || !serverAvailable}
+                  disabled={isLoading || (!serverAvailable && !IS_LOVABLE_ENVIRONMENT)}
                 >
                   {isLoading ? 'Logging in...' : 'Login'}
                 </Button>
