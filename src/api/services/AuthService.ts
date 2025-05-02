@@ -1,4 +1,3 @@
-
 import { User, UserRole } from '../models';
 
 // Mocked users data
@@ -97,21 +96,34 @@ export const AuthService = {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     // In a real implementation, you'd verify the JWT token, extract the user id, and query the database
-    // For this mock, we'll just parse the token string
+    // For this mock, we'll extract the user ID from the token
     if (!token || !token.startsWith('mock-jwt-token-')) {
+      console.log('Invalid token format:', token);
       return null;
     }
     
-    const userId = token.split('-')[2];
-    const user = mockUsers.find(u => u.id === userId);
-    
-    if (!user) {
+    try {
+      const parts = token.split('-');
+      if (parts.length < 3) {
+        console.log('Token does not contain enough parts');
+        return null;
+      }
+      
+      const userId = parts[2];
+      const user = mockUsers.find(u => u.id === userId);
+      
+      if (!user) {
+        console.log('User not found for ID:', userId);
+        return null;
+      }
+      
+      // Return user without password hash
+      const { passwordHash, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    } catch (error) {
+      console.error('Error parsing token:', error);
       return null;
     }
-    
-    // Return user without password hash
-    const { passwordHash, ...userWithoutPassword } = user;
-    return userWithoutPassword;
   },
   
   // Create a new user (for admin use)
