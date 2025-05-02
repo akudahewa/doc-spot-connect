@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DateRangePicker, DateRange } from 'react-date-range';
+import { DateRangePicker } from 'react-date-range';
+import type { Range } from 'react-date-range';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import { ChevronDownIcon } from 'lucide-react';
@@ -24,7 +25,7 @@ const ReportGenerator = () => {
   const [reportType, setReportType] = useState<ReportType | ''>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange>({
+  const [dateRange, setDateRange] = useState<Range>({
     startDate: new Date(),
     endDate: new Date(),
     key: 'selection',
@@ -61,14 +62,14 @@ const ReportGenerator = () => {
         { 
           reportType, 
           dateRange: {
-            startDate: dateRange.startDate?.toISOString() || new Date().toISOString(),
-            endDate: dateRange.endDate?.toISOString() || new Date().toISOString()
+            startDate: dateRange.startDate instanceof Date ? dateRange.startDate.toISOString() : new Date().toISOString(),
+            endDate: dateRange.endDate instanceof Date ? dateRange.endDate.toISOString() : new Date().toISOString()
           }
         },
         currentUser.id,
         undefined, // dispensaryId (optional)
-        dateRange.startDate || new Date(),
-        dateRange.endDate || new Date()
+        dateRange.startDate instanceof Date ? dateRange.startDate : new Date(),
+        dateRange.endDate instanceof Date ? dateRange.endDate : new Date()
       );
       
       toast({
@@ -139,7 +140,8 @@ const ReportGenerator = () => {
                     type="button"
                   >
                     <span>
-                      {dateRange.startDate?.toLocaleDateString() || 'Start date'} - {dateRange.endDate?.toLocaleDateString() || 'End date'}
+                      {dateRange.startDate instanceof Date ? dateRange.startDate.toLocaleDateString() : 'Start date'} - 
+                      {dateRange.endDate instanceof Date ? dateRange.endDate.toLocaleDateString() : 'End date'}
                     </span>
                     <ChevronDownIcon className="ml-2 h-4 w-4" />
                   </Button>
@@ -148,9 +150,9 @@ const ReportGenerator = () => {
                     <div className="absolute z-10 mt-1 bg-white border rounded-md shadow-lg">
                       <DateRangePicker
                         ranges={[dateRange]}
-                        onChange={(ranges) => {
-                          if (ranges.selection) {
-                            setDateRange(ranges.selection);
+                        onChange={(item) => {
+                          if (item.selection) {
+                            setDateRange(item.selection);
                           }
                         }}
                         moveRangeOnFirstSelection={false}
