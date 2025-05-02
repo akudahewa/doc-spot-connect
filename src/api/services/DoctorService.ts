@@ -1,99 +1,125 @@
 
+import axios from 'axios';
 import { Doctor } from '../models';
 
-// Mocked doctors data
-const mockDoctors: Doctor[] = [
-  {
-    id: '1',
-    name: 'Dr. Sarah Wilson',
-    specialization: 'General Practitioner',
-    qualifications: ['MBBS', 'MD'],
-    contactNumber: '555-123-4567',
-    email: 'sarah.wilson@example.com',
-    profilePicture: 'https://randomuser.me/api/portraits/women/68.jpg',
-    dispensaries: ['1', '2'],
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2023-05-20')
-  },
-  {
-    id: '2',
-    name: 'Dr. Michael Chen',
-    specialization: 'Cardiologist',
-    qualifications: ['MBBS', 'MD', 'DM Cardiology'],
-    contactNumber: '555-987-6543',
-    email: 'michael.chen@example.com',
-    profilePicture: 'https://randomuser.me/api/portraits/men/45.jpg',
-    dispensaries: ['1'],
-    createdAt: new Date('2023-02-10'),
-    updatedAt: new Date('2023-06-05')
-  },
-  {
-    id: '3',
-    name: 'Dr. Emily Johnson',
-    specialization: 'Pediatrician',
-    qualifications: ['MBBS', 'MD Pediatrics'],
-    contactNumber: '555-234-5678',
-    email: 'emily.johnson@example.com',
-    profilePicture: 'https://randomuser.me/api/portraits/women/22.jpg',
-    dispensaries: ['2'],
-    createdAt: new Date('2023-03-05'),
-    updatedAt: new Date('2023-07-15')
-  }
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const DoctorService = {
   // Get all doctors
   getAllDoctors: async (): Promise<Doctor[]> => {
-    // Simulating API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockDoctors;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API_URL}/doctors`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      return response.data.map((doctor: any) => ({
+        ...doctor,
+        id: doctor._id,
+        createdAt: new Date(doctor.createdAt),
+        updatedAt: new Date(doctor.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
+      throw new Error('Failed to fetch doctors');
+    }
   },
 
   // Get doctor by ID
   getDoctorById: async (id: string): Promise<Doctor | null> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return mockDoctors.find(doctor => doctor.id === id) || null;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API_URL}/doctors/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (!response.data) return null;
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error(`Error fetching doctor with ID ${id}:`, error);
+      throw new Error('Failed to fetch doctor');
+    }
   },
 
   // Get doctors by dispensary ID
   getDoctorsByDispensaryId: async (dispensaryId: string): Promise<Doctor[]> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return mockDoctors.filter(doctor => doctor.dispensaries.includes(dispensaryId));
-  },
-
-  // Add a new doctor (in a real API, this would create a new record)
-  addDoctor: async (doctor: Omit<Doctor, 'id' | 'createdAt' | 'updatedAt'>): Promise<Doctor> => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const newDoctor: Doctor = {
-      ...doctor,
-      id: Math.random().toString(36).substring(2, 11),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    return newDoctor;
-  },
-
-  // Update doctor (in a real API, this would update the record in the database)
-  updateDoctor: async (id: string, doctor: Partial<Doctor>): Promise<Doctor | null> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const existingDoctorIndex = mockDoctors.findIndex(d => d.id === id);
-    
-    if (existingDoctorIndex === -1) {
-      return null;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API_URL}/doctors/dispensary/${dispensaryId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      return response.data.map((doctor: any) => ({
+        ...doctor,
+        id: doctor._id,
+        createdAt: new Date(doctor.createdAt),
+        updatedAt: new Date(doctor.updatedAt)
+      }));
+    } catch (error) {
+      console.error(`Error fetching doctors for dispensary ${dispensaryId}:`, error);
+      throw new Error('Failed to fetch doctors for dispensary');
     }
-
-    const updatedDoctor = {
-      ...mockDoctors[existingDoctorIndex],
-      ...doctor,
-      updatedAt: new Date()
-    };
-    
-    return updatedDoctor;
   },
 
-  // Delete doctor (in a real API, this would remove the record from the database)
+  // Add a new doctor
+  addDoctor: async (doctor: Omit<Doctor, 'id' | 'createdAt' | 'updatedAt'>): Promise<Doctor> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.post(`${API_URL}/doctors`, doctor, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error adding doctor:', error);
+      throw new Error('Failed to add doctor');
+    }
+  },
+
+  // Update doctor
+  updateDoctor: async (id: string, doctor: Partial<Doctor>): Promise<Doctor | null> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.put(`${API_URL}/doctors/${id}`, doctor, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (!response.data) return null;
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error(`Error updating doctor with ID ${id}:`, error);
+      throw new Error('Failed to update doctor');
+    }
+  },
+
+  // Delete doctor
   deleteDoctor: async (id: string): Promise<boolean> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return true;
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(`${API_URL}/doctors/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return true;
+    } catch (error) {
+      console.error(`Error deleting doctor with ID ${id}:`, error);
+      throw new Error('Failed to delete doctor');
+    }
   }
 };

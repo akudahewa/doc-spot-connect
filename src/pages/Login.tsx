@@ -10,6 +10,10 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Lock } from 'lucide-react';
 import { AuthService } from '@/api/services/AuthService';
+import axios from 'axios';
+
+// Add API URL for authentication
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const Login = () => {
   const { toast } = useToast();
@@ -17,34 +21,70 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [serverAvailable, setServerAvailable] = useState(true);
   
-  // Check if user is already logged in
+  // Check server availability and existing auth
   useEffect(() => {
-    const checkExistingAuth = async () => {
-      const token = localStorage.getItem('auth_token');
-      if (token) {
-        try {
-          // Validate existing token
-          const user = await AuthService.getCurrentUser(token);
-          if (user) {
-            console.log('Already authenticated as:', user.name);
-            navigate('/admin/dashboard', { replace: true });
-            return;
-          }
-        } catch (error) {
-          console.log('Invalid existing session, proceeding to login');
-          // Clear invalid auth data
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('current_user');
-        }
+    const checkServer = async () => {
+      try {
+        // Try to connect to the API server
+        await axios.get(`${API_URL}`, { timeout: 5000 });
+        setServerAvailable(true);
+        
+        // If server is available, check existing auth
+        checkExistingAuth();
+      } catch (error) {
+        console.error('Server connection failed:', error);
+        setServerAvailable(false);
+        toast({
+          title: 'Server Unavailable',
+          description: 'The API server is not running. Please start the server and try again.',
+          variant: 'destructive'
+        });
       }
     };
     
-    checkExistingAuth();
+    checkServer();
   }, [navigate]);
+  
+  const checkExistingAuth = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      try {
+        // Try using the token with the new API
+        const response = await axios.get(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data) {
+          console.log('Already authenticated as:', response.data.name);
+          
+          // Store the user data
+          localStorage.setItem('current_user', JSON.stringify(response.data));
+          
+          navigate('/admin/dashboard', { replace: true });
+          return;
+        }
+      } catch (error) {
+        console.log('Invalid existing session, proceeding to login');
+        // Clear invalid auth data
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('current_user');
+      }
+    }
+  };
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!serverAvailable) {
+      toast({
+        title: 'Server Unavailable',
+        description: 'Cannot login because the API server is not running.',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     if (!email || !password) {
       toast({
@@ -59,13 +99,19 @@ const Login = () => {
     
     try {
       console.log('Attempting login with:', { email });
-      const response = await AuthService.login(email, password);
-      console.log('Login response received:', { success: !!response.token });
       
-      if (!response.user || !response.token) {
+      // Use axios directly instead of the service to ensure we're using the new API
+      const response = await axios.post(`${API_URL}/auth/login`, {
+        email,
+        password
+      });
+      
+      console.log('Login response received:', { success: !!response.data.token });
+      
+      if (!response.data.user || !response.data.token) {
         toast({
           title: 'Login Failed',
-          description: response.message || 'Invalid credentials',
+          description: response.data.message || 'Invalid credentials',
           variant: 'destructive'
         });
         setIsLoading(false);
@@ -79,14 +125,14 @@ const Login = () => {
       localStorage.removeItem('current_user');
       
       // Save auth token and user info to local storage
-      localStorage.setItem('auth_token', response.token);
-      localStorage.setItem('current_user', JSON.stringify(response.user));
+      localStorage.setItem('auth_token', response.data.token);
+      localStorage.setItem('current_user', JSON.stringify(response.data.user));
       
-      console.log('Auth data saved successfully. Token:', response.token);
+      console.log('Auth data saved successfully. Token:', response.data.token);
       
       toast({
         title: 'Login Successful',
-        description: `Welcome back, ${response.user.name}!`
+        description: `Welcome back, ${response.data.user.name}!`
       });
       
       // Wait briefly to ensure localStorage is updated before navigation
@@ -94,11 +140,24 @@ const Login = () => {
         console.log('Navigating to dashboard...');
         navigate('/admin/dashboard', { replace: true });
       }, 300);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      
+      // Handle specific error responses
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        errorMessage = error.response.data.message || errorMessage;
+      } else if (error.request) {
+        // The request was made but no response was received
+        errorMessage = 'No response from server. Please check your connection.';
+      }
+      
       toast({
         title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
@@ -122,6 +181,16 @@ const Login = () => {
               <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
             </CardHeader>
             <CardContent>
+              {!serverAvailable && (
+                <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
+                  <p className="font-medium">API Server Unavailable</p>
+                  <p className="text-sm mt-1">
+                    The API server is not running. Please start the server by running:<br />
+                    <code className="bg-gray-100 px-2 py-1 rounded">node server/index.js</code>
+                  </p>
+                </div>
+              )}
+              
               <form onSubmit={handleLogin} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -155,7 +224,7 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-medical-600 hover:bg-medical-700"
-                  disabled={isLoading}
+                  disabled={isLoading || !serverAvailable}
                 >
                   {isLoading ? 'Logging in...' : 'Login'}
                 </Button>

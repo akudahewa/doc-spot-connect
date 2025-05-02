@@ -1,191 +1,185 @@
 
+import axios from 'axios';
 import { TimeSlotConfig, AbsentTimeSlot } from '../models';
 
-// Mocked time slot configurations
-const mockTimeSlotConfigs: TimeSlotConfig[] = [
-  {
-    id: '1',
-    doctorId: '1',
-    dispensaryId: '1',
-    dayOfWeek: 1, // Monday
-    startTime: '18:00', // 6:00 PM
-    endTime: '22:00', // 10:00 PM
-    maxPatients: 15,
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2023-01-15')
-  },
-  {
-    id: '2',
-    doctorId: '1',
-    dispensaryId: '1',
-    dayOfWeek: 2, // Tuesday
-    startTime: '18:00',
-    endTime: '22:00',
-    maxPatients: 15,
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2023-01-15')
-  },
-  {
-    id: '3',
-    doctorId: '1',
-    dispensaryId: '1',
-    dayOfWeek: 3, // Wednesday
-    startTime: '18:00',
-    endTime: '22:00',
-    maxPatients: 15,
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2023-01-15')
-  },
-  {
-    id: '4',
-    doctorId: '1',
-    dispensaryId: '1',
-    dayOfWeek: 4, // Thursday
-    startTime: '18:00',
-    endTime: '22:00',
-    maxPatients: 15,
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2023-01-15')
-  },
-  {
-    id: '5',
-    doctorId: '1',
-    dispensaryId: '1',
-    dayOfWeek: 5, // Friday
-    startTime: '18:00',
-    endTime: '22:00',
-    maxPatients: 15,
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2023-01-15')
-  },
-  {
-    id: '6',
-    doctorId: '1',
-    dispensaryId: '1',
-    dayOfWeek: 6, // Saturday
-    startTime: '12:00', // 12:00 PM
-    endTime: '16:00', // 4:00 PM
-    maxPatients: 20,
-    createdAt: new Date('2023-01-15'),
-    updatedAt: new Date('2023-01-15')
-  },
-  {
-    id: '7',
-    doctorId: '1',
-    dispensaryId: '2',
-    dayOfWeek: 0, // Sunday
-    startTime: '10:00', // 10:00 AM
-    endTime: '14:00', // 2:00 PM
-    maxPatients: 12,
-    createdAt: new Date('2023-02-01'),
-    updatedAt: new Date('2023-02-01')
-  }
-];
-
-// Mocked absent time slots
-const mockAbsentTimeSlots: AbsentTimeSlot[] = [
-  {
-    id: '1',
-    doctorId: '1',
-    dispensaryId: '1',
-    date: new Date('2023-07-10'), // A Monday
-    startTime: '18:00',
-    endTime: '22:00',
-    reason: 'Personal emergency',
-    createdAt: new Date('2023-07-05'),
-    updatedAt: new Date('2023-07-05')
-  },
-  {
-    id: '2',
-    doctorId: '1',
-    dispensaryId: '2',
-    date: new Date('2023-07-16'), // A Sunday
-    startTime: '10:00',
-    endTime: '14:00',
-    reason: 'Conference attendance',
-    createdAt: new Date('2023-07-01'),
-    updatedAt: new Date('2023-07-01')
-  }
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const TimeSlotService = {
   // Get time slots for a doctor at a specific dispensary
   getTimeSlotConfigsByDoctor: async (doctorId: string, dispensaryId: string): Promise<TimeSlotConfig[]> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return mockTimeSlotConfigs.filter(
-      slot => slot.doctorId === doctorId && slot.dispensaryId === dispensaryId
-    );
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/timeslots/config/doctor/${doctorId}/dispensary/${dispensaryId}`, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return response.data.map((slot: any) => ({
+        ...slot,
+        id: slot._id,
+        doctorId: slot.doctorId,
+        dispensaryId: slot.dispensaryId,
+        createdAt: new Date(slot.createdAt),
+        updatedAt: new Date(slot.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching time slot configs:', error);
+      throw new Error('Failed to fetch time slot configurations');
+    }
   },
 
   // Get all time slots for a dispensary
   getTimeSlotConfigsByDispensary: async (dispensaryId: string): Promise<TimeSlotConfig[]> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return mockTimeSlotConfigs.filter(slot => slot.dispensaryId === dispensaryId);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/timeslots/config/dispensary/${dispensaryId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return response.data.map((slot: any) => ({
+        ...slot,
+        id: slot._id,
+        doctorId: typeof slot.doctorId === 'object' ? slot.doctorId._id : slot.doctorId,
+        dispensaryId: slot.dispensaryId,
+        createdAt: new Date(slot.createdAt),
+        updatedAt: new Date(slot.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching dispensary time slots:', error);
+      throw new Error('Failed to fetch dispensary time slot configurations');
+    }
   },
 
   // Add a new time slot configuration
   addTimeSlotConfig: async (timeSlotConfig: Omit<TimeSlotConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<TimeSlotConfig> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const newTimeSlotConfig: TimeSlotConfig = {
-      ...timeSlotConfig,
-      id: Math.random().toString(36).substring(2, 11),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    return newTimeSlotConfig;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.post(
+        `${API_URL}/timeslots/config`, 
+        timeSlotConfig,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error adding time slot config:', error);
+      throw new Error('Failed to add time slot configuration');
+    }
   },
 
   // Update a time slot configuration
   updateTimeSlotConfig: async (id: string, config: Partial<TimeSlotConfig>): Promise<TimeSlotConfig | null> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const existingConfigIndex = mockTimeSlotConfigs.findIndex(c => c.id === id);
-    
-    if (existingConfigIndex === -1) {
-      return null;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.put(
+        `${API_URL}/timeslots/config/${id}`, 
+        config,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (!response.data) return null;
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error updating time slot config:', error);
+      throw new Error('Failed to update time slot configuration');
     }
-
-    const updatedConfig = {
-      ...mockTimeSlotConfigs[existingConfigIndex],
-      ...config,
-      updatedAt: new Date()
-    };
-    
-    return updatedConfig;
   },
 
   // Delete a time slot configuration
   deleteTimeSlotConfig: async (id: string): Promise<boolean> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return true;
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(`${API_URL}/timeslots/config/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return true;
+    } catch (error) {
+      console.error('Error deleting time slot config:', error);
+      throw new Error('Failed to delete time slot configuration');
+    }
   },
 
   // Get absent time slots for a doctor at a specific dispensary
   getAbsentTimeSlots: async (doctorId: string, dispensaryId: string, startDate: Date, endDate: Date): Promise<AbsentTimeSlot[]> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return mockAbsentTimeSlots.filter(
-      slot => 
-        slot.doctorId === doctorId && 
-        slot.dispensaryId === dispensaryId &&
-        slot.date >= startDate &&
-        slot.date <= endDate
-    );
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/timeslots/absent/doctor/${doctorId}/dispensary/${dispensaryId}`, 
+        {
+          params: {
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
+          },
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      return response.data.map((slot: any) => ({
+        ...slot,
+        id: slot._id,
+        date: new Date(slot.date),
+        createdAt: new Date(slot.createdAt),
+        updatedAt: new Date(slot.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching absent time slots:', error);
+      throw new Error('Failed to fetch absent time slots');
+    }
   },
 
   // Add an absent time slot
   addAbsentTimeSlot: async (absentSlot: Omit<AbsentTimeSlot, 'id' | 'createdAt' | 'updatedAt'>): Promise<AbsentTimeSlot> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const newAbsentSlot: AbsentTimeSlot = {
-      ...absentSlot,
-      id: Math.random().toString(36).substring(2, 11),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    return newAbsentSlot;
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      // Convert date to ISO string if it's a Date object
+      const slotToSend = {
+        ...absentSlot,
+        date: absentSlot.date instanceof Date ? absentSlot.date.toISOString() : absentSlot.date,
+      };
+      
+      const response = await axios.post(
+        `${API_URL}/timeslots/absent`, 
+        slotToSend,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        date: new Date(response.data.date),
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error adding absent time slot:', error);
+      throw new Error('Failed to add absent time slot');
+    }
   },
 
   // Delete an absent time slot
   deleteAbsentTimeSlot: async (id: string): Promise<boolean> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return true;
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(`${API_URL}/timeslots/absent/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return true;
+    } catch (error) {
+      console.error('Error deleting absent time slot:', error);
+      throw new Error('Failed to delete absent time slot');
+    }
   }
 };
