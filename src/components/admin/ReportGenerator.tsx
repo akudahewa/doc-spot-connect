@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { ReportService } from '@/api/services/ReportService';
@@ -13,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DateRangePicker } from 'react-date-range';
+import { DateRangePicker, DateRange } from 'react-date-range';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import { ChevronDownIcon } from 'lucide-react';
@@ -23,7 +24,7 @@ const ReportGenerator = () => {
   const [reportType, setReportType] = useState<ReportType | ''>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [dateRange, setDateRange] = useState({
+  const [dateRange, setDateRange] = useState<DateRange>({
     startDate: new Date(),
     endDate: new Date(),
     key: 'selection',
@@ -60,14 +61,14 @@ const ReportGenerator = () => {
         { 
           reportType, 
           dateRange: {
-            startDate: dateRange.startDate.toISOString(),
-            endDate: dateRange.endDate.toISOString()
+            startDate: dateRange.startDate?.toISOString() || new Date().toISOString(),
+            endDate: dateRange.endDate?.toISOString() || new Date().toISOString()
           }
         },
         currentUser.id,
         undefined, // dispensaryId (optional)
-        dateRange.startDate,
-        dateRange.endDate
+        dateRange.startDate || new Date(),
+        dateRange.endDate || new Date()
       );
       
       toast({
@@ -138,7 +139,7 @@ const ReportGenerator = () => {
                     type="button"
                   >
                     <span>
-                      {dateRange.startDate.toLocaleDateString()} - {dateRange.endDate.toLocaleDateString()}
+                      {dateRange.startDate?.toLocaleDateString() || 'Start date'} - {dateRange.endDate?.toLocaleDateString() || 'End date'}
                     </span>
                     <ChevronDownIcon className="ml-2 h-4 w-4" />
                   </Button>
@@ -148,9 +149,8 @@ const ReportGenerator = () => {
                       <DateRangePicker
                         ranges={[dateRange]}
                         onChange={(ranges) => {
-                          const { selection } = ranges;
-                          if (selection.startDate && selection.endDate) {
-                            setDateRange(selection);
+                          if (ranges.selection) {
+                            setDateRange(ranges.selection);
                           }
                         }}
                         moveRangeOnFirstSelection={false}
