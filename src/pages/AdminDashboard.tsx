@@ -35,60 +35,61 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     // Check authentication on component mount
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    setIsLoading(true);
-    console.log('Checking authentication...');
+    const checkAuth = async () => {
+      setIsLoading(true);
+      console.log('Checking authentication...');
+      
+      try {
+        // Get token from local storage
+        const token = localStorage.getItem('auth_token');
+        console.log('Auth token found:', !!token);
+        
+        if (!token) {
+          console.log('No auth token in localStorage');
+          throw new Error("No authentication token found");
+        }
+        
+        // Get current user with token
+        console.log('Fetching current user with token:', token);
+        const user = await AuthService.getCurrentUser(token);
+        
+        if (!user) {
+          console.log('User validation failed');
+          throw new Error("Invalid user session");
+        }
+        
+        console.log('User authenticated successfully:', user.name);
+        
+        // Update current user state
+        setCurrentUser(user);
+        
+        // Update user data in localStorage in case it changed
+        localStorage.setItem('current_user', JSON.stringify(user));
+        
+      } catch (error: any) {
+        console.error("Authentication error:", error.message);
+        
+        // Show toast notification
+        toast({
+          title: "Session expired",
+          description: "Please log in again to continue",
+          variant: "destructive"
+        });
+        
+        // Clear authentication data
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('current_user');
+        
+        // Redirect to login
+        navigate('/login', { replace: true });
+        return;
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    try {
-      // Get token from local storage
-      const token = localStorage.getItem('auth_token');
-      console.log('Auth token found:', !!token);
-      
-      if (!token) {
-        console.log('No auth token in localStorage');
-        throw new Error("No authentication token found");
-      }
-      
-      // Get current user with token
-      console.log('Fetching current user with token:', token.substring(0, 20) + '...');
-      const user = await AuthService.getCurrentUser(token);
-      
-      if (!user) {
-        console.log('User validation failed');
-        throw new Error("Invalid user session");
-      }
-      
-      console.log('User authenticated successfully:', user.name);
-      
-      // Update current user state
-      setCurrentUser(user);
-      
-      // Update user data in localStorage in case it changed
-      localStorage.setItem('current_user', JSON.stringify(user));
-      
-    } catch (error: any) {
-      console.error("Authentication error:", error.message);
-      
-      // Show toast notification
-      toast({
-        title: "Session expired",
-        description: "Please log in again to continue",
-        variant: "destructive"
-      });
-      
-      // Clear authentication data
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('current_user');
-      
-      // Redirect to login
-      navigate('/login');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    checkAuth();
+  }, [navigate, toast]);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
@@ -97,7 +98,7 @@ const AdminDashboard = () => {
       title: "Logged out",
       description: "You have been successfully logged out"
     });
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   // Show loading state

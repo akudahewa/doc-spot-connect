@@ -1,3 +1,4 @@
+
 import { User, UserRole } from '../models';
 
 // Mocked users data
@@ -86,13 +87,13 @@ export const AuthService = {
     // Update last login time (in a real implementation, this would update the database)
     user.lastLogin = new Date();
     
-    // Create a token with predictable format for demo but still unique for each login
-    const token = `mock-jwt-token-${user.id}-${Date.now()}`;
+    // Create a token (fixed format for easier parsing)
+    const token = `mock-jwt-${user.id}-${Date.now()}`;
     
     // Store the active token for this user
     activeTokens.set(user.id, token);
     
-    console.log(`Login successful for user: ${user.name}, token: ${token.substring(0, 20)}...`);
+    console.log(`Login successful for user: ${user.name}, token generated: ${token}`);
     
     // Return user without password hash
     const { passwordHash, ...userWithoutPassword } = user;
@@ -110,17 +111,17 @@ export const AuthService = {
       return null;
     }
     
-    // In a real implementation, you'd verify the JWT token here
-    if (!token.startsWith('mock-jwt-token-')) {
-      console.log('Invalid token format');
-      return null;
-    }
-    
     try {
-      // Extract user ID from token
+      // Validate token format
+      if (!token.startsWith('mock-jwt-')) {
+        console.log('Invalid token format:', token.substring(0, 20));
+        return null;
+      }
+      
+      // Extract user ID from token (format: mock-jwt-{userId}-{timestamp})
       const parts = token.split('-');
       if (parts.length < 3) {
-        console.log('Token parts missing');
+        console.log('Invalid token structure. Parts:', parts);
         return null;
       }
       
@@ -130,7 +131,7 @@ export const AuthService = {
       const user = mockUsers.find(u => u.id === userId);
       
       if (!user) {
-        console.log(`User not found for user ID: ${userId}`);
+        console.log(`User not found for ID: ${userId}`);
         return null;
       }
       
@@ -138,7 +139,7 @@ export const AuthService = {
       const activeToken = activeTokens.get(userId);
       if (activeToken !== token) {
         console.log(`Token mismatch for user ID: ${userId}`);
-        console.log(`Stored token: ${activeToken?.substring(0, 20) || 'none'}`);
+        console.log(`Active token: ${activeToken?.substring(0, 20) || 'none'}`);
         console.log(`Provided token: ${token.substring(0, 20)}`);
         return null;
       }
@@ -149,7 +150,7 @@ export const AuthService = {
       const { passwordHash, ...userWithoutPassword } = user;
       return userWithoutPassword;
     } catch (error) {
-      console.error('Error parsing token:', error);
+      console.error('Error validating token:', error);
       return null;
     }
   },

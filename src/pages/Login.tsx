@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -18,6 +18,31 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkExistingAuth = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        try {
+          // Validate existing token
+          const user = await AuthService.getCurrentUser(token);
+          if (user) {
+            console.log('Already authenticated as:', user.name);
+            navigate('/admin/dashboard', { replace: true });
+            return;
+          }
+        } catch (error) {
+          console.log('Invalid existing session, proceeding to login');
+          // Clear invalid auth data
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('current_user');
+        }
+      }
+    };
+    
+    checkExistingAuth();
+  }, [navigate]);
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -35,19 +60,21 @@ const Login = () => {
     try {
       console.log('Attempting login with:', { email });
       const response = await AuthService.login(email, password);
-      console.log('Login response:', { success: !!response.token, userId: response.user?.id });
+      console.log('Login response received:', { success: !!response.token });
       
       if (!response.user || !response.token) {
         toast({
           title: 'Login Failed',
-          description: response.message,
+          description: response.message || 'Invalid credentials',
           variant: 'destructive'
         });
         setIsLoading(false);
         return;
       }
       
-      // Clear any previous auth data first
+      console.log('Login successful, saving auth data...');
+      
+      // Clear any previous auth data
       localStorage.removeItem('auth_token');
       localStorage.removeItem('current_user');
       
@@ -55,17 +82,18 @@ const Login = () => {
       localStorage.setItem('auth_token', response.token);
       localStorage.setItem('current_user', JSON.stringify(response.user));
       
-      console.log('Auth data saved, token:', response.token.substring(0, 20) + '...');
+      console.log('Auth data saved successfully. Token:', response.token);
       
       toast({
         title: 'Login Successful',
         description: `Welcome back, ${response.user.name}!`
       });
       
-      // Ensure localStorage is updated before navigating
+      // Wait briefly to ensure localStorage is updated before navigation
       setTimeout(() => {
+        console.log('Navigating to dashboard...');
         navigate('/admin/dashboard', { replace: true });
-      }, 100);
+      }, 300);
     } catch (error) {
       console.error('Login error:', error);
       toast({
@@ -73,6 +101,7 @@ const Login = () => {
         description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive'
       });
+    } finally {
       setIsLoading(false);
     }
   };
