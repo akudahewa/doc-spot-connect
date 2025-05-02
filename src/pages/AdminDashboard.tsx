@@ -14,11 +14,15 @@ const getLocalStorageUser = () => {
   const userJson = localStorage.getItem('current_user');
   if (userJson) {
     try {
-      return JSON.parse(userJson);
+      const user = JSON.parse(userJson);
+      console.log("Retrieved user from localStorage:", user.name);
+      return user;
     } catch (e) {
+      console.error("Error parsing user from localStorage:", e);
       return null;
     }
   }
+  console.log("No user found in localStorage");
   return null;
 };
 
@@ -32,7 +36,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     // Check authentication on component mount
     checkAuth();
-  }, [navigate, toast]);
+  }, []);
 
   const checkAuth = async () => {
     setIsLoading(true);
@@ -49,7 +53,7 @@ const AdminDashboard = () => {
       }
       
       // Get current user with token
-      console.log('Fetching current user...');
+      console.log('Fetching current user with token:', token.substring(0, 20) + '...');
       const user = await AuthService.getCurrentUser(token);
       
       if (!user) {
@@ -79,10 +83,8 @@ const AdminDashboard = () => {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('current_user');
       
-      // Redirect to login after a short delay
-      setTimeout(() => {
-        navigate('/login');
-      }, 500);
+      // Redirect to login
+      navigate('/login');
     } finally {
       setIsLoading(false);
     }

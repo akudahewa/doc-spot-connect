@@ -1,4 +1,3 @@
-
 import { User, UserRole } from '../models';
 
 // Mocked users data
@@ -50,9 +49,14 @@ const mockUsers: User[] = [
   }
 ];
 
+// Store active tokens for validation (in a real app, this would be done with proper JWT validation)
+const activeTokens = new Map<string, string>(); // Map of userId -> token
+
 export const AuthService = {
   // Login function
   login: async (email: string, password: string): Promise<{ user: Omit<User, 'passwordHash'> | null; token: string | null; message: string }> => {
+    console.log(`Login attempt for email: ${email}`);
+    
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 800));
     
@@ -61,10 +65,12 @@ export const AuthService = {
     
     // Check if user exists and is active
     if (!user) {
+      console.log(`User not found for email: ${email}`);
       return { user: null, token: null, message: 'Invalid email or password' };
     }
     
     if (!user.isActive) {
+      console.log(`User account is disabled: ${email}`);
       return { user: null, token: null, message: 'Account is disabled. Please contact administrator.' };
     }
     
@@ -73,15 +79,20 @@ export const AuthService = {
     const passwordIsValid = password === '123456';
     
     if (!passwordIsValid) {
+      console.log(`Invalid password for user: ${email}`);
       return { user: null, token: null, message: 'Invalid email or password' };
     }
     
     // Update last login time (in a real implementation, this would update the database)
     user.lastLogin = new Date();
     
-    // Create a token (in a real implementation, this would be a JWT)
-    // Adding a random component to ensure uniqueness between sessions
-    const token = `mock-jwt-token-${user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+    // Create a token with predictable format for demo but still unique for each login
+    const token = `mock-jwt-token-${user.id}-${Date.now()}`;
+    
+    // Store the active token for this user
+    activeTokens.set(user.id, token);
+    
+    console.log(`Login successful for user: ${user.name}, token: ${token.substring(0, 20)}...`);
     
     // Return user without password hash
     const { passwordHash, ...userWithoutPassword } = user;
@@ -114,12 +125,25 @@ export const AuthService = {
       }
       
       const userId = parts[2];
+      console.log(`Validating token for user ID: ${userId}`);
+      
       const user = mockUsers.find(u => u.id === userId);
       
       if (!user) {
-        console.log('User not found for token');
+        console.log(`User not found for user ID: ${userId}`);
         return null;
       }
+      
+      // Check if the token matches the active token for this user
+      const activeToken = activeTokens.get(userId);
+      if (activeToken !== token) {
+        console.log(`Token mismatch for user ID: ${userId}`);
+        console.log(`Stored token: ${activeToken?.substring(0, 20) || 'none'}`);
+        console.log(`Provided token: ${token.substring(0, 20)}`);
+        return null;
+      }
+      
+      console.log(`Token validated successfully for user: ${user.name}`);
       
       // Return user without password hash
       const { passwordHash, ...userWithoutPassword } = user;

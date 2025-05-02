@@ -33,7 +33,9 @@ const Login = () => {
     setIsLoading(true);
     
     try {
+      console.log('Attempting login with:', { email });
       const response = await AuthService.login(email, password);
+      console.log('Login response:', { success: !!response.token, userId: response.user?.id });
       
       if (!response.user || !response.token) {
         toast({
@@ -53,15 +55,17 @@ const Login = () => {
       localStorage.setItem('auth_token', response.token);
       localStorage.setItem('current_user', JSON.stringify(response.user));
       
+      console.log('Auth data saved, token:', response.token.substring(0, 20) + '...');
+      
       toast({
         title: 'Login Successful',
         description: `Welcome back, ${response.user.name}!`
       });
       
-      // Wait for localStorage to be updated before navigating
+      // Ensure localStorage is updated before navigating
       setTimeout(() => {
-        navigate('/admin/dashboard');
-      }, 800);
+        navigate('/admin/dashboard', { replace: true });
+      }, 100);
     } catch (error) {
       console.error('Login error:', error);
       toast({
