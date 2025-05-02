@@ -1,16 +1,19 @@
 
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Lock } from 'lucide-react';
-import { useState } from 'react';
+import { AuthService } from '@/api/services/AuthService';
 
 const Login = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -29,16 +32,39 @@ const Login = () => {
     
     setIsLoading(true);
     
-    // Simulate authentication process
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For this demo, just show a success message
-    toast({
-      title: 'Login Successful',
-      description: 'You are now logged in as an admin.'
-    });
-    
-    setIsLoading(false);
+    try {
+      const { user, token, message } = await AuthService.login(email, password);
+      
+      if (!user || !token) {
+        toast({
+          title: 'Login Failed',
+          description: message,
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      // Save auth token and user info to local storage
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('current_user', JSON.stringify(user));
+      
+      toast({
+        title: 'Login Successful',
+        description: `Welcome back, ${user.name}!`
+      });
+      
+      // Redirect to admin dashboard
+      navigate('/admin/dashboard');
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -94,6 +120,12 @@ const Login = () => {
                 >
                   {isLoading ? 'Logging in...' : 'Login'}
                 </Button>
+                
+                <div className="text-center text-sm text-gray-500">
+                  <p>Demo credentials:</p>
+                  <p>Email: admin@example.com</p>
+                  <p>Password: 123456</p>
+                </div>
               </form>
             </CardContent>
           </Card>

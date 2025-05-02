@@ -85,3 +85,41 @@ export interface Booking extends BaseModel {
   checkedInTime?: Date;
   completedTime?: Date;
 }
+
+// User role enum
+export enum UserRole {
+  SUPER_ADMIN = 'super_admin',
+  DISPENSARY_ADMIN = 'dispensary_admin',
+  DISPENSARY_STAFF = 'dispensary_staff'
+}
+
+// User model
+export interface User extends BaseModel {
+  name: string;
+  email: string;
+  passwordHash: string; // In a real implementation, never store plain passwords
+  role: UserRole;
+  dispensaryIds?: string[]; // For dispensary admins and staff, which dispensaries they are associated with
+  isActive: boolean;
+  lastLogin?: Date;
+}
+
+// Report types enum
+export enum ReportType {
+  DAILY_BOOKINGS = 'daily_bookings',
+  MONTHLY_SUMMARY = 'monthly_summary',
+  DOCTOR_PERFORMANCE = 'doctor_performance',
+  DISPENSARY_REVENUE = 'dispensary_revenue'
+}
+
+// Report model
+export interface Report extends BaseModel {
+  type: ReportType;
+  title: string;
+  parameters: Record<string, any>; // Parameters used to generate the report
+  generatedBy: string; // User ID
+  dispensaryId?: string; // Optional, if the report is for a specific dispensary
+  startDate: Date;
+  endDate: Date;
+  data: Record<string, any>; // Structured report data
+}
