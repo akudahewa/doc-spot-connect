@@ -45,6 +45,10 @@ const Login = () => {
         return;
       }
       
+      // Clear any previous auth data first
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('current_user');
+      
       // Save auth token and user info to local storage
       localStorage.setItem('auth_token', response.token);
       localStorage.setItem('current_user', JSON.stringify(response.user));
@@ -54,10 +58,10 @@ const Login = () => {
         description: `Welcome back, ${response.user.name}!`
       });
       
-      // Redirect to admin dashboard
+      // Wait for localStorage to be updated before navigating
       setTimeout(() => {
         navigate('/admin/dashboard');
-      }, 500);
+      }, 800);
     } catch (error) {
       console.error('Login error:', error);
       toast({

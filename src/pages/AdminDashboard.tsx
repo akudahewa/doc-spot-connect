@@ -30,49 +30,63 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      setIsLoading(true);
-      
-      try {
-        // Get token from local storage
-        const token = localStorage.getItem('auth_token');
-        
-        if (!token) {
-          throw new Error("No auth token found");
-        }
-        
-        // Get current user with token
-        const user = await AuthService.getCurrentUser(token);
-        
-        if (!user) {
-          throw new Error("Invalid session");
-        }
-        
-        // Update current user state
-        setCurrentUser(user);
-        
-        // Make sure the current_user in localStorage is up to date
-        localStorage.setItem('current_user', JSON.stringify(user));
-        
-      } catch (error) {
-        console.error("Auth error:", error);
-        toast({
-          title: "Session expired",
-          description: "Please log in again",
-          variant: "destructive"
-        });
-        // Clear authentication data
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('current_user');
-        // Redirect to login
-        navigate('/login');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
+    // Check authentication on component mount
     checkAuth();
   }, [navigate, toast]);
+
+  const checkAuth = async () => {
+    setIsLoading(true);
+    console.log('Checking authentication...');
+    
+    try {
+      // Get token from local storage
+      const token = localStorage.getItem('auth_token');
+      console.log('Auth token found:', !!token);
+      
+      if (!token) {
+        console.log('No auth token in localStorage');
+        throw new Error("No authentication token found");
+      }
+      
+      // Get current user with token
+      console.log('Fetching current user...');
+      const user = await AuthService.getCurrentUser(token);
+      
+      if (!user) {
+        console.log('User validation failed');
+        throw new Error("Invalid user session");
+      }
+      
+      console.log('User authenticated successfully:', user.name);
+      
+      // Update current user state
+      setCurrentUser(user);
+      
+      // Update user data in localStorage in case it changed
+      localStorage.setItem('current_user', JSON.stringify(user));
+      
+    } catch (error: any) {
+      console.error("Authentication error:", error.message);
+      
+      // Show toast notification
+      toast({
+        title: "Session expired",
+        description: "Please log in again to continue",
+        variant: "destructive"
+      });
+      
+      // Clear authentication data
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('current_user');
+      
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        navigate('/login');
+      }, 500);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
@@ -84,6 +98,7 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
+  // Show loading state
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen">

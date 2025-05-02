@@ -69,7 +69,7 @@ export const AuthService = {
     }
     
     // In a real implementation, you'd verify the password hash here
-    // For this mock, we'll just check if the password is the demo password
+    // For this mock, we'll use a hardcoded password for demo purposes
     const passwordIsValid = password === '123456';
     
     if (!passwordIsValid) {
@@ -80,7 +80,8 @@ export const AuthService = {
     user.lastLogin = new Date();
     
     // Create a token (in a real implementation, this would be a JWT)
-    const token = `mock-jwt-token-${user.id}-${Date.now()}`;
+    // Adding a random component to ensure uniqueness between sessions
+    const token = `mock-jwt-token-${user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
     
     // Return user without password hash
     const { passwordHash, ...userWithoutPassword } = user;
@@ -93,22 +94,22 @@ export const AuthService = {
   
   // Get current user (simulating token validation)
   getCurrentUser: async (token: string): Promise<Omit<User, 'passwordHash'> | null> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
     if (!token) {
+      console.log('Token is missing');
       return null;
     }
     
-    // In a real implementation, you'd verify the JWT token, extract the user id, and query the database
-    // For this mock, we'll extract the user ID from the token
+    // In a real implementation, you'd verify the JWT token here
     if (!token.startsWith('mock-jwt-token-')) {
+      console.log('Invalid token format');
       return null;
     }
     
     try {
+      // Extract user ID from token
       const parts = token.split('-');
       if (parts.length < 3) {
+        console.log('Token parts missing');
         return null;
       }
       
@@ -116,6 +117,7 @@ export const AuthService = {
       const user = mockUsers.find(u => u.id === userId);
       
       if (!user) {
+        console.log('User not found for token');
         return null;
       }
       
