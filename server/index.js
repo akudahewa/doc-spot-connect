@@ -41,6 +41,11 @@ app.get('/', (req, res) => {
   res.send('MyClinic API is running');
 });
 
+// Add a route for the base /api path to help with testing
+app.get('/api', (req, res) => {
+  res.json({ status: 'API is running', endpoints: ['/api/doctors', '/api/dispensaries', '/api/timeslots', '/api/auth'] });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

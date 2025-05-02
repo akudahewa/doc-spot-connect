@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -10,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Lock } from 'lucide-react';
 import axios from 'axios';
 
-// Add API URL for authentication
+// Get API URL from environment variables with fallback
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Detect environment - local by default
@@ -18,7 +19,7 @@ const IS_LOVABLE_ENVIRONMENT = window.location.hostname.includes('lovableproject
                               window.location.hostname.includes('lovable.app');
                               
 // Force local development mode if needed
-const LOCAL_DEV_MODE = true;
+const LOCAL_DEV_MODE = false;
 
 const Login = () => {
   const { toast } = useToast();
@@ -47,7 +48,9 @@ const Login = () => {
       
       try {
         // Try to connect to the API server
-        await axios.get(`${API_URL}`, { timeout: 5000 });
+        console.log('Checking API server availability at:', API_URL);
+        const response = await axios.get(API_URL, { timeout: 5000 });
+        console.log('API server response:', response.data);
         setServerAvailable(true);
         console.log('Server connection successful');
         
@@ -66,7 +69,7 @@ const Login = () => {
         } else {
           toast({
             title: 'Server Unavailable',
-            description: 'The API server is not running. Login will be simulated for development.',
+            description: 'The API server is not running or not reachable. Please check your server or use simulated login.',
             variant: 'default'
           });
         }
@@ -76,7 +79,7 @@ const Login = () => {
     };
     
     checkServer();
-  }, [navigate]);
+  }, []);
   
   const checkExistingAuth = async () => {
     const token = localStorage.getItem('auth_token');
@@ -145,6 +148,7 @@ const Login = () => {
     
     try {
       console.log('Attempting login with:', { email });
+      console.log('Using API URL:', `${API_URL}/auth/login`);
       
       // Use axios directly instead of the service to ensure we're using the new API
       const response = await axios.post(`${API_URL}/auth/login`, {
@@ -232,11 +236,12 @@ const Login = () => {
               )}
             </CardHeader>
             <CardContent>
-              {!serverAvailable && !IS_LOVABLE_ENVIRONMENT && (
+              {!serverAvailable && !IS_LOVABLE_ENVIRONMENT && !checkingServer && (
                 <div className="mb-6 p-3 bg-amber-50 border border-amber-200 text-amber-600 rounded-md">
-                  <p className="font-medium">Local Development Mode</p>
+                  <p className="font-medium">API Server Not Available</p>
                   <p className="text-sm mt-1">
-                    You can login with simulated authentication, or start the server by running:<br />
+                    The API server is not running or not accessible at {API_URL}.<br/>
+                    You can proceed with simulated login, or start the server by running:<br />
                     <code className="bg-gray-100 px-2 py-1 rounded">./start-server.sh</code>
                   </p>
                 </div>
@@ -283,9 +288,10 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-medical-600 hover:bg-medical-700"
-                  disabled={isLoading}
+                  disabled={isLoading || (checkingServer && !IS_LOVABLE_ENVIRONMENT && !LOCAL_DEV_MODE)}
                 >
-                  {isLoading ? 'Logging in...' : 'Login'}
+                  {isLoading ? 'Logging in...' : 
+                   (checkingServer && !IS_LOVABLE_ENVIRONMENT && !LOCAL_DEV_MODE) ? 'Checking API...' : 'Login'}
                 </Button>
                 
                 <div className="text-center text-sm text-gray-500">
