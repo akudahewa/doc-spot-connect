@@ -14,22 +14,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DateRangePicker } from 'react-date-range';
-import type { Range } from 'react-date-range';
-import 'react-date-range/dist/styles.css';
-import 'react-date-range/dist/theme/default.css';
+import { Calendar } from '@/components/ui/calendar';
+import { format, addDays } from 'date-fns';
 import { ChevronDownIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const ReportGenerator = () => {
   const { toast } = useToast();
   const [reportType, setReportType] = useState<ReportType | ''>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<Range>({
-    startDate: new Date(),
-    endDate: new Date(),
-    key: 'selection',
-  });
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date>(addDays(new Date(), 7));
   
   const handleReportTypeChange = (type: ReportType) => {
     setReportType(type);
@@ -62,14 +58,14 @@ const ReportGenerator = () => {
         { 
           reportType, 
           dateRange: {
-            startDate: dateRange.startDate instanceof Date ? dateRange.startDate.toISOString() : new Date().toISOString(),
-            endDate: dateRange.endDate instanceof Date ? dateRange.endDate.toISOString() : new Date().toISOString()
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
           }
         },
         currentUser.id,
         undefined, // dispensaryId (optional)
-        dateRange.startDate instanceof Date ? dateRange.startDate : new Date(),
-        dateRange.endDate instanceof Date ? dateRange.endDate : new Date()
+        startDate,
+        endDate
       );
       
       toast({
@@ -132,41 +128,52 @@ const ReportGenerator = () => {
               
               <div className="space-y-2">
                 <Label>Date Range</Label>
-                <div className="relative">
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-between"
-                    onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-                    type="button"
-                  >
-                    <span>
-                      {dateRange.startDate instanceof Date ? dateRange.startDate.toLocaleDateString() : 'Start date'} - 
-                      {dateRange.endDate instanceof Date ? dateRange.endDate.toLocaleDateString() : 'End date'}
-                    </span>
-                    <ChevronDownIcon className="ml-2 h-4 w-4" />
-                  </Button>
-                  
-                  {isDatePickerOpen && (
-                    <div className="absolute z-10 mt-1 bg-white border rounded-md shadow-lg">
-                      <DateRangePicker
-                        ranges={[dateRange]}
-                        onChange={(item) => {
-                          if (item.selection) {
-                            setDateRange(item.selection);
-                          }
-                        }}
-                        moveRangeOnFirstSelection={false}
-                      />
-                      <div className="p-2 flex justify-end">
-                        <Button 
-                          size="sm"
-                          onClick={() => setIsDatePickerOpen(false)}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor="startDate" className="text-xs mb-1 block">Start Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left"
+                          id="startDate"
                         >
-                          Apply
+                          {format(startDate, "PPP")}
                         </Button>
-                      </div>
-                    </div>
-                  )}
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => date && setStartDate(date)}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <Label htmlFor="endDate" className="text-xs mb-1 block">End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left"
+                          id="endDate"
+                        >
+                          {format(endDate, "PPP")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={(date) => date && setEndDate(date)}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
               </div>
             </CardContent>
