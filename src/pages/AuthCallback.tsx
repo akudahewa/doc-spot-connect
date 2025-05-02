@@ -14,6 +14,7 @@ const AuthCallback = () => {
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -23,14 +24,27 @@ const AuthCallback = () => {
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         
+        console.log('Auth callback received with code:', code ? 'Present (hidden)' : 'Not present');
+        console.log('State:', state);
+        
         if (!code) {
           setError('Authorization code not found in the callback URL');
           setProcessing(false);
           return;
         }
 
+        // Debug info for troubleshooting
+        setDebugInfo({
+          apiUrl: API_URL,
+          hasCode: !!code,
+          hasState: !!state,
+          search: location.search
+        });
+
         // Exchange code for token with the backend
         const response = await axios.post(`${API_URL}/auth/callback`, { code, state });
+        
+        console.log('Auth callback response status:', response.status);
         
         if (!response.data || !response.data.token) {
           setError('Failed to retrieve access token');
@@ -51,12 +65,16 @@ const AuthCallback = () => {
         navigate('/admin/dashboard', { replace: true });
       } catch (error: any) {
         console.error('Auth0 callback error:', error);
-        setError(error.response?.data?.message || error.message || 'Authentication failed');
+        
+        let errorMessage = error.response?.data?.message || error.message || 'Authentication failed';
+        let errorDetails = error.response?.data?.details || JSON.stringify(error.response?.data || {});
+        
+        setError(`${errorMessage} | Details: ${errorDetails}`);
         setProcessing(false);
         
         toast({
           title: 'Authentication Error',
-          description: error.response?.data?.message || error.message || 'Authentication failed',
+          description: errorMessage,
           variant: 'destructive'
         });
       }
@@ -86,6 +104,14 @@ const AuthCallback = () => {
                   </div>
                   <p className="mt-4 text-lg font-medium">Authentication Failed</p>
                   <p className="text-red-500 text-sm mt-2">{error}</p>
+                  
+                  {debugInfo && (
+                    <div className="mt-4 p-3 bg-gray-100 rounded text-left text-xs overflow-auto">
+                      <p className="font-bold">Debug Information:</p>
+                      <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+                    </div>
+                  )}
+                  
                   <button 
                     className="mt-4 px-4 py-2 bg-medical-600 text-white rounded-md hover:bg-medical-700"
                     onClick={() => navigate('/login')}

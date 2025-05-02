@@ -18,8 +18,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const IS_LOVABLE_ENVIRONMENT = window.location.hostname.includes('lovableproject.com') || 
                                window.location.hostname.includes('lovable.app');
                               
-// Force local development mode if needed
-const LOCAL_DEV_MODE = false;
+// Force local development mode if needed - set to true for easy testing
+const LOCAL_DEV_MODE = true;
 
 const Login = () => {
   const { toast } = useToast();
@@ -30,6 +30,7 @@ const Login = () => {
   const [serverAvailable, setServerAvailable] = useState(false);
   const [checkingServer, setCheckingServer] = useState(true);
   const [auth0Config, setAuth0Config] = useState<any>(null);
+  const [serverStatusMessage, setServerStatusMessage] = useState('Checking server availability...');
   
   // Check server availability and existing auth
   useEffect(() => {
@@ -39,6 +40,7 @@ const Login = () => {
         console.log('Running in Lovable preview environment - API server connection skipped');
         setServerAvailable(false);
         setCheckingServer(false);
+        setServerStatusMessage('Running in Lovable preview environment');
         toast({
           title: 'Development Mode',
           description: 'Running in Lovable preview environment. To test with the real API, deploy your server or run locally.',
@@ -53,6 +55,7 @@ const Login = () => {
         const response = await axios.get(API_URL, { timeout: 5000 });
         console.log('API server response:', response.data);
         setServerAvailable(true);
+        setServerStatusMessage('Server connected successfully');
         console.log('Server connection successful');
         
         // Get Auth0 configuration
@@ -62,6 +65,7 @@ const Login = () => {
           setAuth0Config(auth0Response.data);
         } catch (error) {
           console.error('Failed to get Auth0 configuration:', error);
+          setServerStatusMessage('Connected, but failed to get Auth0 config');
         }
         
         // If server is available, check existing auth
@@ -69,6 +73,7 @@ const Login = () => {
       } catch (error) {
         console.error('Server connection failed:', error);
         setServerAvailable(false);
+        setServerStatusMessage(`Server connection failed: ${(error as any)?.message || 'Unknown error'}`);
         
         if (LOCAL_DEV_MODE) {
           toast({
@@ -111,6 +116,7 @@ const Login = () => {
         }
       } catch (error) {
         console.log('Invalid existing session, proceeding to login');
+        console.error('Auth check error:', error);
         // Clear invalid auth data
         localStorage.removeItem('auth_token');
         localStorage.removeItem('current_user');
@@ -137,6 +143,8 @@ const Login = () => {
       `audience=${encodeURIComponent(auth0Config.audience)}&` +
       `scope=openid profile email&` +
       `state=${encodeURIComponent(window.location.origin)}`;
+    
+    console.log('Redirecting to Auth0 URL:', authUrl);
     
     // Redirect to Auth0 login page
     window.location.href = authUrl;
@@ -279,11 +287,12 @@ const Login = () => {
             <CardContent>
               {!serverAvailable && !IS_LOVABLE_ENVIRONMENT && !checkingServer && (
                 <div className="mb-6 p-3 bg-amber-50 border border-amber-200 text-amber-600 rounded-md">
-                  <p className="font-medium">API Server Not Available</p>
-                  <p className="text-sm mt-1">
-                    The API server is not running or not accessible at {API_URL}.<br/>
+                  <p className="font-medium">API Server Status</p>
+                  <p className="text-sm mt-1">{serverStatusMessage}</p>
+                  <p className="text-sm mt-2">
+                    Expected API URL: {API_URL}<br/>
                     You can proceed with simulated login, or start the server by running:<br />
-                    <code className="bg-gray-100 px-2 py-1 rounded">./start-server.sh</code>
+                    <code className="bg-gray-100 px-2 py-1 rounded">npm run dev</code> (from server directory)
                   </p>
                 </div>
               )}

@@ -9,15 +9,35 @@ const { ManagementClient } = require('auth0');
 const axios = require('axios');
 
 // Setup Auth0 Management API client
-const auth0Management = new ManagementClient({
-  domain: process.env.AUTH0_DOMAIN,
-  clientId: process.env.AUTH0_CLIENT_ID,
-  clientSecret: process.env.AUTH0_CLIENT_SECRET,
-  scope: 'read:users update:users'
-});
+let auth0Management;
+try {
+  auth0Management = new ManagementClient({
+    domain: process.env.AUTH0_DOMAIN,
+    clientId: process.env.AUTH0_CLIENT_ID,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET,
+    scope: 'read:users update:users'
+  });
+  console.log('Auth0 Management API client initialized');
+} catch (error) {
+  console.error('Failed to initialize Auth0 Management API client:', error);
+}
 
 // Public routes
 router.get('/config', (req, res) => {
+  // Add additional logging for debugging
+  console.log('Auth config request received');
+  console.log('Auth0 config values:', {
+    domain: process.env.AUTH0_DOMAIN,
+    clientId: process.env.AUTH0_CLIENT_ID,
+    audience: process.env.AUTH0_AUDIENCE,
+    redirectUri: process.env.AUTH0_CALLBACK_URL,
+  });
+
+  // Check if required values are present
+  if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_CLIENT_ID) {
+    console.warn('Missing Auth0 configuration values');
+  }
+
   res.json({
     domain: process.env.AUTH0_DOMAIN,
     clientId: process.env.AUTH0_CLIENT_ID,
@@ -26,16 +46,25 @@ router.get('/config', (req, res) => {
   });
 });
 
-// Auth0 callback route
+// Auth0 callback route with improved error handling
 router.post('/callback', async (req, res) => {
   try {
     const { code, state } = req.body;
+    console.log('Auth callback received with code:', code ? 'Present (hidden)' : 'Not present');
     
     if (!code) {
       return res.status(400).json({ message: 'Authorization code is required' });
     }
     
+    // Log Auth0 config being used
+    console.log('Auth0 config for token exchange:', {
+      domain: process.env.AUTH0_DOMAIN,
+      clientId: process.env.AUTH0_CLIENT_ID,
+      redirectUri: process.env.AUTH0_CALLBACK_URL,
+    });
+    
     // Exchange code for token with Auth0
+    console.log('Exchanging code for token...');
     const tokenResponse = await axios.post(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
       grant_type: 'authorization_code',
       client_id: process.env.AUTH0_CLIENT_ID,
@@ -45,54 +74,86 @@ router.post('/callback', async (req, res) => {
     });
     
     if (!tokenResponse.data || !tokenResponse.data.access_token) {
-      return res.status(400).json({ message: 'Failed to exchange code for token' });
+      console.error('Token exchange failed:', tokenResponse.data);
+      return res.status(400).json({ 
+        message: 'Failed to exchange code for token',
+        details: tokenResponse.data
+      });
     }
     
+    console.log('Token received successfully');
+    
     // Get user info with the access token
+    console.log('Getting user info...');
     const userInfoResponse = await axios.get(`https://${process.env.AUTH0_DOMAIN}/userinfo`, {
       headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` }
     });
     
     const auth0User = userInfoResponse.data;
+    console.log('User info retrieved:', {
+      sub: auth0User.sub,
+      email: auth0User.email,
+      name: auth0User.name || auth0User.nickname
+    });
     
     // Check if user exists in our database
     let user = await User.findOne({ auth0Id: auth0User.sub });
     
     if (!user) {
-      // Fetch user roles from Auth0 management API
-      const auth0ManagementUser = await auth0Management.getUser({ id: auth0User.sub });
+      console.log('Creating new user in database...');
       
-      // Extract roles and permissions
-      let userRole = 'dispensary_staff'; // Default role
-      if (auth0ManagementUser.app_metadata?.roles) {
-        if (auth0ManagementUser.app_metadata.roles.includes('super_admin')) {
-          userRole = 'super_admin';
-        } else if (auth0ManagementUser.app_metadata.roles.includes('dispensary_admin')) {
-          userRole = 'dispensary_admin';
+      // Set default role if Auth0 Management API fails
+      let userRole = 'dispensary_staff';
+      let userDispensaryIds = [];
+      
+      // Try to fetch user roles from Auth0 management API
+      if (auth0Management) {
+        try {
+          const auth0ManagementUser = await auth0Management.getUser({ id: auth0User.sub });
+          console.log('User metadata from Auth0:', {
+            app_metadata: auth0ManagementUser.app_metadata || 'none',
+            user_metadata: auth0ManagementUser.user_metadata || 'none'
+          });
+          
+          // Extract roles and permissions
+          if (auth0ManagementUser.app_metadata?.roles) {
+            if (auth0ManagementUser.app_metadata.roles.includes('super_admin')) {
+              userRole = 'super_admin';
+            } else if (auth0ManagementUser.app_metadata.roles.includes('dispensary_admin')) {
+              userRole = 'dispensary_admin';
+            }
+          }
+          
+          userDispensaryIds = auth0ManagementUser.app_metadata?.dispensaryIds || [];
+        } catch (error) {
+          console.error('Failed to fetch user metadata from Auth0:', error);
         }
       }
       
       // Create new user in our database
       user = new User({
-        name: auth0User.name || auth0User.nickname,
+        name: auth0User.name || auth0User.nickname || auth0User.email,
         email: auth0User.email,
         auth0Id: auth0User.sub,
         role: userRole,
-        dispensaryIds: auth0ManagementUser.app_metadata?.dispensaryIds || [],
+        dispensaryIds: userDispensaryIds,
         isActive: true,
         lastLogin: new Date()
       });
       
       await user.save();
+      console.log('New user created in database');
     } else {
       // Update user login time
+      console.log('Updating existing user login time');
       user.lastLogin = new Date();
       await user.save();
     }
     
     // Create our own JWT with user info and permissions
-    const token = tokenResponse.data.id_token;
+    const token = tokenResponse.data.id_token || tokenResponse.data.access_token;
     
+    console.log('Login successful, sending response');
     res.json({
       token,
       user: {
@@ -108,10 +169,17 @@ router.post('/callback', async (req, res) => {
     });
   } catch (error) {
     console.error('Auth0 callback error:', error);
+    let errorDetails = 'No additional details';
+    
+    if (error.response) {
+      console.error('Auth0 error response:', error.response.data);
+      errorDetails = JSON.stringify(error.response.data);
+    }
+    
     res.status(500).json({ 
       message: 'Authentication failed', 
       error: error.message,
-      details: error.response?.data || 'No additional details'
+      details: errorDetails
     });
   }
 });
@@ -120,13 +188,33 @@ router.post('/callback', async (req, res) => {
 // Get current user profile 
 router.get('/me', validateJwt, async (req, res) => {
   try {
+    // In development mode, handle mock authentication
+    if (process.env.NODE_ENV === 'development' && req.auth.payload.sub === 'dev-user') {
+      console.log('Development mode: Using mock user data');
+      return res.status(200).json({
+        id: 'dev-user-id',
+        name: 'Development User',
+        email: 'dev@example.com',
+        role: 'super_admin',
+        dispensaryIds: [],
+        permissions: ['read:doctors', 'read:dispensaries'],
+        lastLogin: new Date()
+      });
+    }
+    
     const auth0UserId = req.auth.payload.sub;
+    console.log('Getting user profile for:', auth0UserId);
     
     // First, check if user exists in our database
     let user = await User.findOne({ auth0Id: auth0UserId });
     
     if (!user) {
+      console.log('User not found in database, creating from Auth0');
       // If not in our database, fetch from Auth0 and create in our DB
+      if (!auth0Management) {
+        return res.status(500).json({ message: 'Auth0 Management API client not available' });
+      }
+      
       const auth0User = await auth0Management.getUser({ id: auth0UserId });
       
       // Extract roles from Auth0 user metadata or app_metadata

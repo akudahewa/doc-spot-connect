@@ -2,16 +2,53 @@
 const { auth } = require('express-oauth2-jwt-bearer');
 const jwt = require('jsonwebtoken');
 
-// Auth0 JWT validation middleware
-const validateJwt = auth({
-  audience: process.env.AUTH0_AUDIENCE,
-  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}/`,
-  tokenSigningAlg: 'RS256'
-});
+// Auth0 JWT validation middleware with improved error handling
+const validateJwt = (req, res, next) => {
+  // Skip validation if no auth header is present (for development)
+  if (process.env.NODE_ENV === 'development' && !req.headers.authorization) {
+    console.log('Development mode: Skipping JWT validation');
+    req.auth = { 
+      payload: { 
+        sub: 'dev-user',
+        permissions: ['read:doctors', 'read:dispensaries']
+      }
+    };
+    return next();
+  }
+
+  // Use Auth0 JWT validation
+  const authMiddleware = auth({
+    audience: process.env.AUTH0_AUDIENCE,
+    issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}/`,
+    tokenSigningAlg: 'RS256'
+  });
+
+  // Handle potential errors from the auth middleware
+  try {
+    authMiddleware(req, res, (err) => {
+      if (err) {
+        console.error('JWT validation error:', err.message);
+        return res.status(401).json({
+          message: 'Authentication failed',
+          error: err.message
+        });
+      }
+      next();
+    });
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
 // Check if user has the required permissions
 const checkPermissions = (requiredPermissions) => {
   return (req, res, next) => {
+    // If in development mode without auth header, allow access
+    if (process.env.NODE_ENV === 'development' && !req.headers.authorization) {
+      return next();
+    }
+
     const permissions = req.auth?.permissions || [];
     
     // Check if the user has all the required permissions
@@ -32,6 +69,11 @@ const checkPermissions = (requiredPermissions) => {
 // Role-based access control middleware
 const requireRole = (roles) => {
   return (req, res, next) => {
+    // If in development mode without auth header, allow access
+    if (process.env.NODE_ENV === 'development' && !req.headers.authorization) {
+      return next();
+    }
+
     // Extract token from authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
