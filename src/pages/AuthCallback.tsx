@@ -34,10 +34,13 @@ const AuthCallback = () => {
 
         // Exchange code for token with the backend
         console.log('Sending code to backend for token exchange');
+        const redirectUri = `${window.location.origin}/callback`;
+        console.log('Using redirect URI:', redirectUri);
+        
         const response = await axios.post(`${API_URL}/auth/callback`, { 
           code, 
           state,
-          redirectUri: window.location.origin + '/callback' // Ensure this matches what's in Auth0
+          redirectUri
         });
         
         console.log('Auth callback response received');

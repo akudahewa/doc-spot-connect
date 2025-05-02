@@ -97,11 +97,14 @@ const Login = () => {
     
     console.log('Auth0 config for login:', auth0Config);
     
-    // Construct Auth0 authorization URL
+    // Construct Auth0 authorization URL with the correct callback URL
+    const redirectUri = `${window.location.origin}/callback`;
+    console.log('Using redirect URI:', redirectUri);
+    
     const authUrl = `https://${auth0Config.domain}/authorize?` +
       `response_type=code&` +
       `client_id=${auth0Config.clientId}&` +
-      `redirect_uri=${encodeURIComponent(auth0Config.redirectUri)}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `audience=${encodeURIComponent(auth0Config.audience)}&` +
       `scope=openid profile email&` +
       `state=${encodeURIComponent(window.location.origin)}`;
@@ -110,6 +113,28 @@ const Login = () => {
     
     // Redirect to Auth0 login page
     window.location.href = authUrl;
+  };
+  
+  // Dev mode login for development only
+  const handleDevLogin = () => {
+    if (process.env.NODE_ENV !== 'development' && import.meta.env.DEV !== true) {
+      return;
+    }
+    
+    localStorage.setItem('auth_token', 'dev-token');
+    localStorage.setItem('current_user', JSON.stringify({
+      id: 'dev-user-id',
+      name: 'Development Admin',
+      email: 'dev@example.com',
+      role: 'super_admin'
+    }));
+    
+    toast({
+      title: 'Dev Login Successful',
+      description: 'You are now logged in as a development admin'
+    });
+    
+    navigate('/admin/dashboard', { replace: true });
   };
   
   return (
@@ -148,6 +173,15 @@ const Login = () => {
                   {isLoading ? 'Logging in...' : 'Login with Auth0'}
                 </Button>
                 
+                {(import.meta.env.DEV || process.env.NODE_ENV === 'development') && (
+                  <Button 
+                    className="w-full bg-amber-600 hover:bg-amber-700"
+                    onClick={handleDevLogin}
+                  >
+                    Development Login (Skip Auth0)
+                  </Button>
+                )}
+                
                 {!serverAvailable && (
                   <div className="text-center text-sm text-amber-600">
                     <p>Server unavailable. Please start the API server first.</p>
@@ -157,7 +191,7 @@ const Login = () => {
                 {auth0Config && (
                   <div className="text-center text-xs text-gray-500">
                     <p>Auth0 Domain: {auth0Config.domain}</p>
-                    <p>Callback URL: {auth0Config.redirectUri}</p>
+                    <p>Callback URL: {`${window.location.origin}/callback`}</p>
                   </div>
                 )}
               </div>

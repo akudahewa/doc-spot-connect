@@ -32,6 +32,14 @@ const validateJwt = (req, res, next) => {
     
     console.log('Token format check passed, proceeding with Auth0 validation');
     
+    // Debug token information
+    try {
+      const decodedHeader = jwt.decode(token, { complete: true })?.header;
+      console.log('Token header:', decodedHeader ? JSON.stringify(decodedHeader) : 'Unable to decode token header');
+    } catch (err) {
+      console.log('Token decode attempt failed:', err.message);
+    }
+    
     // Use Auth0 JWT validation
     const authMiddleware = auth({
       audience: process.env.AUTH0_AUDIENCE,
@@ -44,6 +52,19 @@ const validateJwt = (req, res, next) => {
     authMiddleware(req, res, (err) => {
       if (err) {
         console.error('JWT validation error:', err.message);
+        
+        // Special handling for development mode
+        if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
+          console.log('Development mode with BYPASS_AUTH: Proceeding despite JWT error');
+          req.auth = { 
+            payload: { 
+              sub: 'dev-user',
+              permissions: ['read:doctors', 'read:dispensaries', 'manage:timeslots', 'update:bookings', 'create:bookings', 'read:bookings']
+            }
+          };
+          return next();
+        }
+        
         return res.status(401).json({
           message: 'Authentication failed',
           error: err.message
