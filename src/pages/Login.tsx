@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -13,7 +12,9 @@ import axios from 'axios';
 
 // Add API URL for authentication
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const IS_LOVABLE_ENVIRONMENT = window.location.hostname.includes('lovableproject.com');
+// Updated detection logic for Lovable environment
+const IS_LOVABLE_ENVIRONMENT = window.location.hostname.includes('lovableproject.com') || 
+                              window.location.hostname.includes('lovable.app');
 
 const Login = () => {
   const { toast } = useToast();
@@ -21,7 +22,8 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [serverAvailable, setServerAvailable] = useState(!IS_LOVABLE_ENVIRONMENT);
+  const [serverAvailable, setServerAvailable] = useState(false);
+  const [checkingServer, setCheckingServer] = useState(true);
   
   // Check server availability and existing auth
   useEffect(() => {
@@ -30,6 +32,7 @@ const Login = () => {
       if (IS_LOVABLE_ENVIRONMENT) {
         console.log('Running in Lovable preview environment - API server connection skipped');
         setServerAvailable(false);
+        setCheckingServer(false);
         toast({
           title: 'Development Mode',
           description: 'Running in Lovable preview environment. To test with the real API, deploy your server or run locally.',
@@ -53,6 +56,8 @@ const Login = () => {
           description: 'The API server is not running. Please start the server and try again.',
           variant: 'destructive'
         });
+      } finally {
+        setCheckingServer(false);
       }
     };
     
@@ -111,12 +116,27 @@ const Login = () => {
       return;
     }
     
+    // For local development, allow login even when server is unavailable
     if (!serverAvailable) {
+      console.log('Server unavailable, simulating login for local development');
+      
       toast({
-        title: 'Server Unavailable',
-        description: 'Cannot login because the API server is not running.',
-        variant: 'destructive'
+        title: 'Development Mode Login',
+        description: 'API server is not running. Using simulated login for development.',
       });
+      
+      // Mock user for development purposes
+      const mockUser = {
+        id: '1',
+        name: 'Demo Admin',
+        email: email || 'admin@example.com',
+        role: 'super_admin',
+      };
+      
+      localStorage.setItem('auth_token', 'mock-token-for-local-dev');
+      localStorage.setItem('current_user', JSON.stringify(mockUser));
+      
+      setTimeout(() => navigate('/admin/dashboard', { replace: true }), 300);
       return;
     }
     
@@ -221,11 +241,12 @@ const Login = () => {
             </CardHeader>
             <CardContent>
               {!serverAvailable && !IS_LOVABLE_ENVIRONMENT && (
-                <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md">
+                <div className="mb-6 p-3 bg-amber-50 border border-amber-200 text-amber-600 rounded-md">
                   <p className="font-medium">API Server Unavailable</p>
                   <p className="text-sm mt-1">
-                    The API server is not running. Please start the server by running:<br />
-                    <code className="bg-gray-100 px-2 py-1 rounded">node server/index.js</code>
+                    The API server is not running. You can still login in development mode, 
+                    or start the server by running:<br />
+                    <code className="bg-gray-100 px-2 py-1 rounded">./start-server.sh</code>
                   </p>
                 </div>
               )}
@@ -273,7 +294,7 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-medical-600 hover:bg-medical-700"
-                  disabled={isLoading || (!serverAvailable && !IS_LOVABLE_ENVIRONMENT)}
+                  disabled={isLoading || checkingServer}
                 >
                   {isLoading ? 'Logging in...' : 'Login'}
                 </Button>
