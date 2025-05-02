@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -34,20 +33,14 @@ const AdminDashboard = () => {
     const checkAuth = async () => {
       setIsLoading(true);
       
-      // Get token from local storage
-      const token = localStorage.getItem('auth_token');
-      
-      if (!token) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to access the dashboard",
-          variant: "destructive"
-        });
-        navigate('/login');
-        return;
-      }
-      
       try {
+        // Get token from local storage
+        const token = localStorage.getItem('auth_token');
+        
+        if (!token) {
+          throw new Error("No auth token found");
+        }
+        
         // Get current user with token
         const user = await AuthService.getCurrentUser(token);
         
@@ -55,8 +48,12 @@ const AdminDashboard = () => {
           throw new Error("Invalid session");
         }
         
+        // Update current user state
         setCurrentUser(user);
+        
+        // Make sure the current_user in localStorage is up to date
         localStorage.setItem('current_user', JSON.stringify(user));
+        
       } catch (error) {
         console.error("Auth error:", error);
         toast({
@@ -64,8 +61,10 @@ const AdminDashboard = () => {
           description: "Please log in again",
           variant: "destructive"
         });
+        // Clear authentication data
         localStorage.removeItem('auth_token');
         localStorage.removeItem('current_user');
+        // Redirect to login
         navigate('/login');
       } finally {
         setIsLoading(false);

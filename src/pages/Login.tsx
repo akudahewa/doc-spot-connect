@@ -33,28 +33,31 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      const { user, token, message } = await AuthService.login(email, password);
+      const response = await AuthService.login(email, password);
       
-      if (!user || !token) {
+      if (!response.user || !response.token) {
         toast({
           title: 'Login Failed',
-          description: message,
+          description: response.message,
           variant: 'destructive'
         });
+        setIsLoading(false);
         return;
       }
       
       // Save auth token and user info to local storage
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('current_user', JSON.stringify(user));
+      localStorage.setItem('auth_token', response.token);
+      localStorage.setItem('current_user', JSON.stringify(response.user));
       
       toast({
         title: 'Login Successful',
-        description: `Welcome back, ${user.name}!`
+        description: `Welcome back, ${response.user.name}!`
       });
       
       // Redirect to admin dashboard
-      navigate('/admin/dashboard');
+      setTimeout(() => {
+        navigate('/admin/dashboard');
+      }, 500);
     } catch (error) {
       console.error('Login error:', error);
       toast({
@@ -62,7 +65,6 @@ const Login = () => {
         description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive'
       });
-    } finally {
       setIsLoading(false);
     }
   };

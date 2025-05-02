@@ -1,3 +1,4 @@
+
 import { User, UserRole } from '../models';
 
 // Mocked users data
@@ -68,7 +69,7 @@ export const AuthService = {
     }
     
     // In a real implementation, you'd verify the password hash here
-    // For this mock, we'll just check if the password contains the user's id (very insecure, just for demo)
+    // For this mock, we'll just check if the password is the demo password
     const passwordIsValid = password === '123456';
     
     if (!passwordIsValid) {
@@ -95,17 +96,19 @@ export const AuthService = {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 300));
     
+    if (!token) {
+      return null;
+    }
+    
     // In a real implementation, you'd verify the JWT token, extract the user id, and query the database
     // For this mock, we'll extract the user ID from the token
-    if (!token || !token.startsWith('mock-jwt-token-')) {
-      console.log('Invalid token format:', token);
+    if (!token.startsWith('mock-jwt-token-')) {
       return null;
     }
     
     try {
       const parts = token.split('-');
       if (parts.length < 3) {
-        console.log('Token does not contain enough parts');
         return null;
       }
       
@@ -113,7 +116,6 @@ export const AuthService = {
       const user = mockUsers.find(u => u.id === userId);
       
       if (!user) {
-        console.log('User not found for ID:', userId);
         return null;
       }
       
