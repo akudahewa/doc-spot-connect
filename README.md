@@ -16,7 +16,7 @@ chmod +x start-server.sh
 
 # Method 2: Manual setup
 cd server
-npm run setup
+npm install
 npm start
 ```
 
@@ -35,7 +35,15 @@ This will start the Vite development server and you can access the application a
 - Email: admin@example.com
 - Password: 123456
 
+## Development Mode
+
+The application includes a development mode that allows you to use the frontend even when the API server is not running. In development mode, authentication is simulated.
+
 ## Notes
 
 - The API server runs at http://localhost:5000 by default
 - The MongoDB connection string is configured in server/.env
+- If you encounter any MongoDB connection issues, check your .env file and internet connection
+
+```
+

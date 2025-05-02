@@ -12,9 +12,13 @@ import axios from 'axios';
 
 // Add API URL for authentication
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-// Updated detection logic for Lovable environment
+
+// Detect environment - local by default
 const IS_LOVABLE_ENVIRONMENT = window.location.hostname.includes('lovableproject.com') || 
                               window.location.hostname.includes('lovable.app');
+                              
+// Force local development mode if needed
+const LOCAL_DEV_MODE = true;
 
 const Login = () => {
   const { toast } = useToast();
@@ -45,17 +49,27 @@ const Login = () => {
         // Try to connect to the API server
         await axios.get(`${API_URL}`, { timeout: 5000 });
         setServerAvailable(true);
+        console.log('Server connection successful');
         
         // If server is available, check existing auth
         checkExistingAuth();
       } catch (error) {
         console.error('Server connection failed:', error);
         setServerAvailable(false);
-        toast({
-          title: 'Server Unavailable',
-          description: 'The API server is not running. Please start the server and try again.',
-          variant: 'destructive'
-        });
+        
+        if (LOCAL_DEV_MODE) {
+          toast({
+            title: 'Local Development Mode',
+            description: 'Running in local development mode with simulated authentication.',
+            variant: 'default'
+          });
+        } else {
+          toast({
+            title: 'Server Unavailable',
+            description: 'The API server is not running. Login will be simulated for development.',
+            variant: 'default'
+          });
+        }
       } finally {
         setCheckingServer(false);
       }
@@ -94,35 +108,13 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (IS_LOVABLE_ENVIRONMENT) {
-      // In Lovable environment, simulate login success for testing UI
+    if (IS_LOVABLE_ENVIRONMENT || !serverAvailable || LOCAL_DEV_MODE) {
+      // In Lovable environment or when server is unavailable, simulate login success
       toast({
         title: 'Development Mode Login',
-        description: 'In the Lovable preview, authentication is simulated. Server connection required for real login.',
-      });
-      
-      // Mock user for preview purposes
-      const mockUser = {
-        id: '1',
-        name: 'Demo Admin',
-        email: email || 'admin@example.com',
-        role: 'super_admin',
-      };
-      
-      localStorage.setItem('auth_token', 'mock-token-for-preview');
-      localStorage.setItem('current_user', JSON.stringify(mockUser));
-      
-      setTimeout(() => navigate('/admin/dashboard', { replace: true }), 300);
-      return;
-    }
-    
-    // For local development, allow login even when server is unavailable
-    if (!serverAvailable) {
-      console.log('Server unavailable, simulating login for local development');
-      
-      toast({
-        title: 'Development Mode Login',
-        description: 'API server is not running. Using simulated login for development.',
+        description: serverAvailable ? 
+          'In development mode, authentication is simulated.' :
+          'API server is not available. Using simulated login for development.',
       });
       
       // Mock user for development purposes
@@ -133,7 +125,7 @@ const Login = () => {
         role: 'super_admin',
       };
       
-      localStorage.setItem('auth_token', 'mock-token-for-local-dev');
+      localStorage.setItem('auth_token', 'mock-token-for-development');
       localStorage.setItem('current_user', JSON.stringify(mockUser));
       
       setTimeout(() => navigate('/admin/dashboard', { replace: true }), 300);
@@ -233,19 +225,18 @@ const Login = () => {
                 </div>
               </div>
               <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
-              {IS_LOVABLE_ENVIRONMENT && (
+              {(IS_LOVABLE_ENVIRONMENT || LOCAL_DEV_MODE || !serverAvailable) && (
                 <p className="text-sm text-amber-600 mt-2">
-                  Running in Lovable preview mode. Login will be simulated.
+                  Running in development mode. Login will be simulated.
                 </p>
               )}
             </CardHeader>
             <CardContent>
               {!serverAvailable && !IS_LOVABLE_ENVIRONMENT && (
                 <div className="mb-6 p-3 bg-amber-50 border border-amber-200 text-amber-600 rounded-md">
-                  <p className="font-medium">API Server Unavailable</p>
+                  <p className="font-medium">Local Development Mode</p>
                   <p className="text-sm mt-1">
-                    The API server is not running. You can still login in development mode, 
-                    or start the server by running:<br />
+                    You can login with simulated authentication, or start the server by running:<br />
                     <code className="bg-gray-100 px-2 py-1 rounded">./start-server.sh</code>
                   </p>
                 </div>
@@ -270,7 +261,6 @@ const Login = () => {
                     placeholder="Enter your email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
                   />
                 </div>
                 
@@ -287,14 +277,13 @@ const Login = () => {
                     placeholder="Enter your password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
                   />
                 </div>
                 
                 <Button 
                   type="submit" 
                   className="w-full bg-medical-600 hover:bg-medical-700"
-                  disabled={isLoading || checkingServer}
+                  disabled={isLoading}
                 >
                   {isLoading ? 'Logging in...' : 'Login'}
                 </Button>

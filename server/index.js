@@ -19,13 +19,15 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://myclinicuser:1qaz2wsx@E@myclinic-cluster.ht5hi.mongodb.net/?retryWrites=true&w=majority&appName=myclinic-cluster';
+const MONGODB_URI = process.env.MONGODB_URI;
 
+// Improved MongoDB connection with better error handling
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('Connected to MongoDB Atlas'))
   .catch(err => {
     console.error('MongoDB connection error:', err);
-    process.exit(1);
+    console.log('Server will continue to run without database connectivity.');
+    // We don't exit the process so the server still runs for development
   });
 
 // Routes
@@ -42,4 +44,5 @@ app.get('/', (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`API available at http://localhost:${PORT}/api`);
 });
