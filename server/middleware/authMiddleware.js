@@ -16,15 +16,22 @@ const validateJwt = (req, res, next) => {
     return next();
   }
 
+  console.log('Auth header:', req.headers.authorization ? 'Present' : 'Not present');
+  
+  // Check if authentication header exists
+  if (!req.headers.authorization) {
+    return res.status(401).json({ message: 'Authorization header is required' });
+  }
+  
   // Use Auth0 JWT validation
-  const authMiddleware = auth({
-    audience: process.env.AUTH0_AUDIENCE,
-    issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}/`,
-    tokenSigningAlg: 'RS256'
-  });
-
-  // Handle potential errors from the auth middleware
   try {
+    const authMiddleware = auth({
+      audience: process.env.AUTH0_AUDIENCE,
+      issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}/`,
+      tokenSigningAlg: 'RS256'
+    });
+    
+    // Handle potential errors from the auth middleware
     authMiddleware(req, res, (err) => {
       if (err) {
         console.error('JWT validation error:', err.message);

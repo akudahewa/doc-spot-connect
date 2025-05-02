@@ -14,8 +14,7 @@ const AuthCallback = () => {
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-
+  
   useEffect(() => {
     const handleCallback = async () => {
       try {
@@ -25,7 +24,6 @@ const AuthCallback = () => {
         const state = searchParams.get('state');
         
         console.log('Auth callback received with code:', code ? 'Present (hidden)' : 'Not present');
-        console.log('State:', state);
         
         if (!code) {
           setError('Authorization code not found in the callback URL');
@@ -33,18 +31,11 @@ const AuthCallback = () => {
           return;
         }
 
-        // Debug info for troubleshooting
-        setDebugInfo({
-          apiUrl: API_URL,
-          hasCode: !!code,
-          hasState: !!state,
-          search: location.search
-        });
-
         // Exchange code for token with the backend
+        console.log('Sending code to backend for token exchange');
         const response = await axios.post(`${API_URL}/auth/callback`, { code, state });
         
-        console.log('Auth callback response status:', response.status);
+        console.log('Auth callback response received');
         
         if (!response.data || !response.data.token) {
           setError('Failed to retrieve access token');
@@ -61,15 +52,14 @@ const AuthCallback = () => {
           description: `Welcome${response.data.user?.name ? ` back, ${response.data.user.name}` : ''}!`
         });
         
-        // Redirect to dashboard
+        // Redirect to dashboard immediately
         navigate('/admin/dashboard', { replace: true });
       } catch (error: any) {
         console.error('Auth0 callback error:', error);
         
         let errorMessage = error.response?.data?.message || error.message || 'Authentication failed';
-        let errorDetails = error.response?.data?.details || JSON.stringify(error.response?.data || {});
         
-        setError(`${errorMessage} | Details: ${errorDetails}`);
+        setError(errorMessage);
         setProcessing(false);
         
         toast({
@@ -89,7 +79,7 @@ const AuthCallback = () => {
         <CardContent className="pt-6">
           {processing ? (
             <div className="text-center">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-medical-600 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-medical-600 border-r-transparent"></div>
               <p className="mt-4 text-lg">Processing authentication...</p>
               <p className="text-gray-500 text-sm mt-2">Please wait while we complete your login</p>
             </div>
@@ -104,14 +94,6 @@ const AuthCallback = () => {
                   </div>
                   <p className="mt-4 text-lg font-medium">Authentication Failed</p>
                   <p className="text-red-500 text-sm mt-2">{error}</p>
-                  
-                  {debugInfo && (
-                    <div className="mt-4 p-3 bg-gray-100 rounded text-left text-xs overflow-auto">
-                      <p className="font-bold">Debug Information:</p>
-                      <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-                    </div>
-                  )}
-                  
                   <button 
                     className="mt-4 px-4 py-2 bg-medical-600 text-white rounded-md hover:bg-medical-700"
                     onClick={() => navigate('/login')}

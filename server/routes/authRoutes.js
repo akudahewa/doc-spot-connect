@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -33,11 +32,6 @@ router.get('/config', (req, res) => {
     redirectUri: process.env.AUTH0_CALLBACK_URL,
   });
 
-  // Check if required values are present
-  if (!process.env.AUTH0_DOMAIN || !process.env.AUTH0_CLIENT_ID) {
-    console.warn('Missing Auth0 configuration values');
-  }
-
   res.json({
     domain: process.env.AUTH0_DOMAIN,
     clientId: process.env.AUTH0_CLIENT_ID,
@@ -46,25 +40,17 @@ router.get('/config', (req, res) => {
   });
 });
 
-// Auth0 callback route with improved error handling
+// Auth0 callback route with more robust error handling
 router.post('/callback', async (req, res) => {
   try {
-    const { code, state } = req.body;
+    const { code } = req.body;
     console.log('Auth callback received with code:', code ? 'Present (hidden)' : 'Not present');
     
     if (!code) {
       return res.status(400).json({ message: 'Authorization code is required' });
     }
     
-    // Log Auth0 config being used
-    console.log('Auth0 config for token exchange:', {
-      domain: process.env.AUTH0_DOMAIN,
-      clientId: process.env.AUTH0_CLIENT_ID,
-      redirectUri: process.env.AUTH0_CALLBACK_URL,
-    });
-    
-    // Exchange code for token with Auth0
-    console.log('Exchanging code for token...');
+    console.log('Exchanging code for token with Auth0...');
     const tokenResponse = await axios.post(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
       grant_type: 'authorization_code',
       client_id: process.env.AUTH0_CLIENT_ID,
@@ -75,16 +61,12 @@ router.post('/callback', async (req, res) => {
     
     if (!tokenResponse.data || !tokenResponse.data.access_token) {
       console.error('Token exchange failed:', tokenResponse.data);
-      return res.status(400).json({ 
-        message: 'Failed to exchange code for token',
-        details: tokenResponse.data
-      });
+      return res.status(400).json({ message: 'Failed to exchange code for token' });
     }
     
     console.log('Token received successfully');
     
     // Get user info with the access token
-    console.log('Getting user info...');
     const userInfoResponse = await axios.get(`https://${process.env.AUTH0_DOMAIN}/userinfo`, {
       headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` }
     });
@@ -99,36 +81,35 @@ router.post('/callback', async (req, res) => {
     // Check if user exists in our database
     let user = await User.findOne({ auth0Id: auth0User.sub });
     
+    // Set default role based on Auth0 
+    let userRole = 'dispensary_staff';
+    let userDispensaryIds = [];
+    
+    // Try to fetch user roles from Auth0 management API
+    if (auth0Management) {
+      try {
+        const auth0ManagementUser = await auth0Management.getUser({ id: auth0User.sub });
+        console.log('User roles from Auth0:', auth0ManagementUser.app_metadata?.roles || 'none');
+        
+        // Extract roles and permissions
+        if (auth0ManagementUser.app_metadata?.roles) {
+          if (auth0ManagementUser.app_metadata.roles.includes('super_admin')) {
+            userRole = 'super_admin';
+            console.log('User is a super admin');
+          } else if (auth0ManagementUser.app_metadata.roles.includes('dispensary_admin')) {
+            userRole = 'dispensary_admin';
+            console.log('User is a dispensary admin');
+          }
+        }
+        
+        userDispensaryIds = auth0ManagementUser.app_metadata?.dispensaryIds || [];
+      } catch (error) {
+        console.error('Failed to fetch user metadata from Auth0:', error);
+      }
+    }
+    
     if (!user) {
       console.log('Creating new user in database...');
-      
-      // Set default role if Auth0 Management API fails
-      let userRole = 'dispensary_staff';
-      let userDispensaryIds = [];
-      
-      // Try to fetch user roles from Auth0 management API
-      if (auth0Management) {
-        try {
-          const auth0ManagementUser = await auth0Management.getUser({ id: auth0User.sub });
-          console.log('User metadata from Auth0:', {
-            app_metadata: auth0ManagementUser.app_metadata || 'none',
-            user_metadata: auth0ManagementUser.user_metadata || 'none'
-          });
-          
-          // Extract roles and permissions
-          if (auth0ManagementUser.app_metadata?.roles) {
-            if (auth0ManagementUser.app_metadata.roles.includes('super_admin')) {
-              userRole = 'super_admin';
-            } else if (auth0ManagementUser.app_metadata.roles.includes('dispensary_admin')) {
-              userRole = 'dispensary_admin';
-            }
-          }
-          
-          userDispensaryIds = auth0ManagementUser.app_metadata?.dispensaryIds || [];
-        } catch (error) {
-          console.error('Failed to fetch user metadata from Auth0:', error);
-        }
-      }
       
       // Create new user in our database
       user = new User({
@@ -144,14 +125,20 @@ router.post('/callback', async (req, res) => {
       await user.save();
       console.log('New user created in database');
     } else {
-      // Update user login time
-      console.log('Updating existing user login time');
+      // Update user login time and ensure role is correct
+      console.log('Updating existing user');
       user.lastLogin = new Date();
+      
+      // Update role if it's changed in Auth0
+      if (userRole !== 'dispensary_staff') {
+        user.role = userRole;
+      }
+      
       await user.save();
     }
     
-    // Create our own JWT with user info and permissions
-    const token = tokenResponse.data.id_token || tokenResponse.data.access_token;
+    // Use the ID token for client auth
+    const token = tokenResponse.data.id_token;
     
     console.log('Login successful, sending response');
     res.json({
@@ -162,15 +149,14 @@ router.post('/callback', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        dispensaryIds: user.dispensaryIds || [],
-        lastLogin: user.lastLogin
+        dispensaryIds: user.dispensaryIds || []
       },
       message: 'Login successful'
     });
   } catch (error) {
     console.error('Auth0 callback error:', error);
-    let errorDetails = 'No additional details';
     
+    let errorDetails = 'No additional details';
     if (error.response) {
       console.error('Auth0 error response:', error.response.data);
       errorDetails = JSON.stringify(error.response.data);
