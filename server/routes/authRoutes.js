@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -43,20 +44,29 @@ router.get('/config', (req, res) => {
 // Auth0 callback route with more robust error handling
 router.post('/callback', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { code, redirectUri } = req.body;
     console.log('Auth callback received with code:', code ? 'Present (hidden)' : 'Not present');
+    console.log('Auth callback redirectUri:', redirectUri);
     
     if (!code) {
       return res.status(400).json({ message: 'Authorization code is required' });
     }
     
     console.log('Exchanging code for token with Auth0...');
+    console.log('Token exchange parameters:', {
+      grant_type: 'authorization_code',
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: '(hidden)',
+      code: '(hidden)',
+      redirect_uri: redirectUri || process.env.AUTH0_CALLBACK_URL
+    });
+    
     const tokenResponse = await axios.post(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
       grant_type: 'authorization_code',
       client_id: process.env.AUTH0_CLIENT_ID,
       client_secret: process.env.AUTH0_CLIENT_SECRET,
       code,
-      redirect_uri: process.env.AUTH0_CALLBACK_URL
+      redirect_uri: redirectUri || process.env.AUTH0_CALLBACK_URL
     });
     
     if (!tokenResponse.data || !tokenResponse.data.access_token) {

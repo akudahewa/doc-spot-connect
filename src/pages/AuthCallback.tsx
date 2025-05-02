@@ -24,6 +24,7 @@ const AuthCallback = () => {
         const state = searchParams.get('state');
         
         console.log('Auth callback received with code:', code ? 'Present (hidden)' : 'Not present');
+        console.log('Auth callback state:', state);
         
         if (!code) {
           setError('Authorization code not found in the callback URL');
@@ -33,7 +34,11 @@ const AuthCallback = () => {
 
         // Exchange code for token with the backend
         console.log('Sending code to backend for token exchange');
-        const response = await axios.post(`${API_URL}/auth/callback`, { code, state });
+        const response = await axios.post(`${API_URL}/auth/callback`, { 
+          code, 
+          state,
+          redirectUri: window.location.origin + '/callback' // Ensure this matches what's in Auth0
+        });
         
         console.log('Auth callback response received');
         
@@ -94,6 +99,13 @@ const AuthCallback = () => {
                   </div>
                   <p className="mt-4 text-lg font-medium">Authentication Failed</p>
                   <p className="text-red-500 text-sm mt-2">{error}</p>
+                  <pre className="mt-2 text-xs text-left bg-gray-100 p-2 rounded overflow-x-auto">
+                    {JSON.stringify({
+                      code: new URLSearchParams(location.search).get('code') ? 'Present (hidden)' : 'Not present',
+                      state: new URLSearchParams(location.search).get('state'),
+                      redirectUri: window.location.origin + '/callback'
+                    }, null, 2)}
+                  </pre>
                   <button 
                     className="mt-4 px-4 py-2 bg-medical-600 text-white rounded-md hover:bg-medical-700"
                     onClick={() => navigate('/login')}

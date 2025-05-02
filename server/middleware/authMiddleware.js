@@ -23,12 +23,21 @@ const validateJwt = (req, res, next) => {
     return res.status(401).json({ message: 'Authorization header is required' });
   }
   
-  // Use Auth0 JWT validation
   try {
+    // Basic validation of the token format
+    const token = req.headers.authorization.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Invalid authorization format' });
+    }
+    
+    console.log('Token format check passed, proceeding with Auth0 validation');
+    
+    // Use Auth0 JWT validation
     const authMiddleware = auth({
       audience: process.env.AUTH0_AUDIENCE,
       issuerBaseURL: `https://${process.env.AUTH0_DOMAIN}/`,
-      tokenSigningAlg: 'RS256'
+      tokenSigningAlg: 'RS256',
+      credentialsRequired: true
     });
     
     // Handle potential errors from the auth middleware

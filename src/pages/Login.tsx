@@ -95,6 +95,8 @@ const Login = () => {
       return;
     }
     
+    console.log('Auth0 config for login:', auth0Config);
+    
     // Construct Auth0 authorization URL
     const authUrl = `https://${auth0Config.domain}/authorize?` +
       `response_type=code&` +
@@ -104,7 +106,7 @@ const Login = () => {
       `scope=openid profile email&` +
       `state=${encodeURIComponent(window.location.origin)}`;
     
-    console.log('Redirecting to Auth0 URL');
+    console.log('Redirecting to Auth0 URL:', authUrl);
     
     // Redirect to Auth0 login page
     window.location.href = authUrl;
@@ -149,6 +151,13 @@ const Login = () => {
                 {!serverAvailable && (
                   <div className="text-center text-sm text-amber-600">
                     <p>Server unavailable. Please start the API server first.</p>
+                  </div>
+                )}
+                
+                {auth0Config && (
+                  <div className="text-center text-xs text-gray-500">
+                    <p>Auth0 Domain: {auth0Config.domain}</p>
+                    <p>Callback URL: {auth0Config.redirectUri}</p>
                   </div>
                 )}
               </div>
