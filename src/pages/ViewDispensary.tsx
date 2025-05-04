@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -9,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Edit, Trash2, Mail, Phone, MapPin, User } from 'lucide-react';
+import { Edit, Trash2, MapPin, CalendarDays } from 'lucide-react';
 
 const ViewDispensary = () => {
   const { id } = useParams<{ id: string }>();
@@ -131,92 +130,75 @@ const ViewDispensary = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
             <Card>
               <CardHeader>
                 <CardTitle>{dispensary.name}</CardTitle>
                 <CardDescription>
-                  <div className="flex items-start">
-                    <MapPin className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
-                    <span>{dispensary.address}</span>
-                  </div>
+                  {dispensary.description || 'No description provided'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {dispensary.description && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Description</h3>
-                    <p className="mt-1">{dispensary.description}</p>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Contact Information</h3>
+                  <div className="mt-1">
+                    <p>
+                      <span className="font-medium">Address:</span>{' '}
+                      <div className="flex items-start mt-1 text-sm text-gray-500">
+                        <MapPin className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                        <span>{dispensary.address}</span>
+                      </div>
+                    </p>
+                    <p>
+                      <span className="font-medium">Email:</span>{' '}
+                      <a href={`mailto:${dispensary.email}`} className="text-medical-600 hover:underline">
+                        {dispensary.email}
+                      </a>
+                    </p>
+                    <p>
+                      <span className="font-medium">Phone:</span>{' '}
+                      <a href={`tel:${dispensary.contactNumber}`} className="text-medical-600 hover:underline">
+                        {dispensary.contactNumber}
+                      </a>
+                    </p>
                   </div>
-                )}
+                </div>
                 
                 <Separator />
                 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">Contact Information</h3>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex items-center">
-                      <Mail className="h-4 w-4 mr-2 text-gray-500" />
-                      <a href={`mailto:${dispensary.email}`} className="text-medical-600 hover:underline">
-                        {dispensary.email}
-                      </a>
-                    </div>
-                    <div className="flex items-center">
-                      <Phone className="h-4 w-4 mr-2 text-gray-500" />
-                      <a href={`tel:${dispensary.contactNumber}`} className="text-medical-600 hover:underline">
-                        {dispensary.contactNumber}
-                      </a>
-                    </div>
+                  <h3 className="text-sm font-medium text-gray-500">Associated Doctors</h3>
+                  <div className="mt-1">
+                    {doctors.length === 0 ? (
+                      <p className="text-gray-400">No associated doctors</p>
+                    ) : (
+                      <div className="space-y-2 mt-2">
+                        {doctors.map(doctor => (
+                          <div 
+                            key={doctor.id}
+                            className="p-3 bg-gray-50 rounded-md"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-medium">{doctor.name}</h4>
+                                <p className="text-sm text-gray-500">{doctor.specialization}</p>
+                              </div>
+                              <Button 
+                                size="sm"
+                                variant="outline"
+                                onClick={() => navigate(`/admin/timeslots/${doctor.id}/${dispensary.id}`)}
+                              >
+                                <CalendarDays className="h-4 w-4 mr-1" />
+                                Manage Slots
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                
-                {dispensary.location && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Location Coordinates</h3>
-                      <div className="mt-1">
-                        <p>Latitude: {dispensary.location.latitude}</p>
-                        <p>Longitude: {dispensary.location.longitude}</p>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="md:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Associated Doctors</CardTitle>
-                <CardDescription>
-                  {doctors.length} doctors working at this dispensary
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {doctors.length === 0 ? (
-                  <p className="text-gray-400">No doctors associated with this dispensary</p>
-                ) : (
-                  doctors.map(doctor => (
-                    <div 
-                      key={doctor.id}
-                      className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer"
-                      onClick={() => navigate(`/admin/doctors/view/${doctor.id}`)}
-                    >
-                      <div className="flex items-center">
-                        <div className="h-8 w-8 bg-medical-100 rounded-full flex items-center justify-center mr-3">
-                          <User className="h-4 w-4 text-medical-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{doctor.name}</h4>
-                          <p className="text-xs text-gray-500">{doctor.specialization}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
               </CardContent>
               <CardFooter>
                 <Button 

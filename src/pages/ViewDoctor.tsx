@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Edit, Trash2, MapPin } from 'lucide-react';
+import { Edit, Trash2, MapPin, CalendarDays } from 'lucide-react';
 
 const ViewDoctor = () => {
   const { id } = useParams<{ id: string }>();
@@ -202,10 +202,22 @@ const ViewDoctor = () => {
                             key={dispensary.id}
                             className="p-3 bg-gray-50 rounded-md"
                           >
-                            <h4 className="font-medium">{dispensary.name}</h4>
-                            <div className="flex items-start mt-1 text-sm text-gray-500">
-                              <MapPin className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
-                              <span>{dispensary.address}</span>
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-medium">{dispensary.name}</h4>
+                                <div className="flex items-start mt-1 text-sm text-gray-500">
+                                  <MapPin className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                                  <span>{dispensary.address}</span>
+                                </div>
+                              </div>
+                              <Button 
+                                size="sm"
+                                variant="outline"
+                                onClick={() => navigate(`/admin/timeslots/${doctor.id}/${dispensary.id}`)}
+                              >
+                                <CalendarDays className="h-4 w-4 mr-1" />
+                                Manage Slots
+                              </Button>
                             </div>
                           </div>
                         ))}
