@@ -52,6 +52,7 @@ const DoctorForm = ({ doctorId, isEdit = false }: DoctorFormProps) => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [dispensaries, setDispensaries] = useState<Dispensary[]>([]);
+  const [selectedDispensaries, setSelectedDispensaries] = useState<string[]>([]);
   
   const form = useForm<DoctorFormValues>({
     defaultValues: {
@@ -77,6 +78,8 @@ const DoctorForm = ({ doctorId, isEdit = false }: DoctorFormProps) => {
         if (isEdit && doctorId) {
           const doctorData = await DoctorService.getDoctorById(doctorId);
           if (doctorData) {
+            const dispensaryIds = doctorData.dispensaries || [];
+            setSelectedDispensaries(dispensaryIds);
             form.reset({
               name: doctorData.name,
               specialization: doctorData.specialization,
@@ -84,7 +87,7 @@ const DoctorForm = ({ doctorId, isEdit = false }: DoctorFormProps) => {
               contactNumber: doctorData.contactNumber,
               email: doctorData.email,
               profilePicture: doctorData.profilePicture || '',
-              dispensaries: doctorData.dispensaries
+              dispensaries: dispensaryIds
             });
           }
         }
@@ -119,7 +122,7 @@ const DoctorForm = ({ doctorId, isEdit = false }: DoctorFormProps) => {
         qualifications: qualificationsArray,
         contactNumber: data.contactNumber,
         email: data.email,
-        dispensaries: data.dispensaries
+        dispensaries: selectedDispensaries
       };
       
       if (data.profilePicture) {
@@ -154,6 +157,16 @@ const DoctorForm = ({ doctorId, isEdit = false }: DoctorFormProps) => {
   };
   
   const handleSelectedDispensariesChange = (dispensaryId: string) => {
+    // Update local state
+    setSelectedDispensaries(prev => {
+      if (prev.includes(dispensaryId)) {
+        return prev.filter(id => id !== dispensaryId);
+      } else {
+        return [...prev, dispensaryId];
+      }
+    });
+    
+    // Also update form values
     const currentSelected = form.getValues('dispensaries');
     const updatedSelected = currentSelected.includes(dispensaryId)
       ? currentSelected.filter(id => id !== dispensaryId)
@@ -282,7 +295,7 @@ const DoctorForm = ({ doctorId, isEdit = false }: DoctorFormProps) => {
                     <div key={dispensary.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`dispensary-${dispensary.id}`}
-                        checked={form.getValues('dispensaries').includes(dispensary.id)}
+                        checked={selectedDispensaries.includes(dispensary.id)}
                         onCheckedChange={() => handleSelectedDispensariesChange(dispensary.id)}
                       />
                       <label

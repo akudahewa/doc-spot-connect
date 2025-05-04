@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dispensary, Doctor } from '@/api/models';
@@ -47,6 +46,7 @@ const DispensaryForm = ({ dispensaryId, isEdit = false }: DispensaryFormProps) =
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [selectedDoctors, setSelectedDoctors] = useState<string[]>([]);
   
   const form = useForm<DispensaryFormValues>({
     defaultValues: {
@@ -73,13 +73,15 @@ const DispensaryForm = ({ dispensaryId, isEdit = false }: DispensaryFormProps) =
         if (isEdit && dispensaryId) {
           const dispensaryData = await DispensaryService.getDispensaryById(dispensaryId);
           if (dispensaryData) {
+            const doctorIds = dispensaryData.doctors || [];
+            setSelectedDoctors(doctorIds);
             form.reset({
               name: dispensaryData.name,
               address: dispensaryData.address,
               contactNumber: dispensaryData.contactNumber,
               email: dispensaryData.email,
               description: dispensaryData.description || '',
-              doctors: dispensaryData.doctors,
+              doctors: doctorIds,
               latitude: dispensaryData.location?.latitude,
               longitude: dispensaryData.location?.longitude
             });
@@ -110,7 +112,7 @@ const DispensaryForm = ({ dispensaryId, isEdit = false }: DispensaryFormProps) =
         contactNumber: data.contactNumber,
         email: data.email,
         description: data.description,
-        doctors: data.doctors
+        doctors: selectedDoctors
       };
       
       // Add location if both latitude and longitude are provided
@@ -149,6 +151,16 @@ const DispensaryForm = ({ dispensaryId, isEdit = false }: DispensaryFormProps) =
   };
   
   const handleSelectedDoctorsChange = (doctorId: string) => {
+    // Update local state
+    setSelectedDoctors(prev => {
+      if (prev.includes(doctorId)) {
+        return prev.filter(id => id !== doctorId);
+      } else {
+        return [...prev, doctorId];
+      }
+    });
+    
+    // Also update the form values
     const currentSelected = form.getValues('doctors');
     const updatedSelected = currentSelected.includes(doctorId)
       ? currentSelected.filter(id => id !== doctorId)
@@ -292,7 +304,7 @@ const DispensaryForm = ({ dispensaryId, isEdit = false }: DispensaryFormProps) =
                     <div key={doctor.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`doctor-${doctor.id}`}
-                        checked={form.getValues('doctors').includes(doctor.id)}
+                        checked={selectedDoctors.includes(doctor.id)}
                         onCheckedChange={() => handleSelectedDoctorsChange(doctor.id)}
                       />
                       <label
