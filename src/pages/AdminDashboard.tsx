@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -214,6 +213,21 @@ const AdminDashboard = () => {
               </Card>
             </div>
             
+            {/* Add a new Time Slot Management card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Time Slot Management</CardTitle>
+                <CardDescription>
+                  Manage doctor time slots and availability at dispensaries
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 gap-4">
+                <Button onClick={() => navigate('/admin/time-slots')} className="bg-medical-600 hover:bg-medical-700">
+                  Manage Time Slots
+                </Button>
+              </CardContent>
+            </Card>
+            
             {/* More dashboard content based on role */}
             {currentUser?.role === UserRole.SUPER_ADMIN && (
               <div className="mt-8">
@@ -308,12 +322,15 @@ const AdminDashboard = () => {
               <CardContent>
                 <p>Manage doctor profiles, specializations, qualifications, and dispensary assignments.</p>
               </CardContent>
-              <CardFooter className="flex justify-between">
+              <CardFooter className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-between">
                 <Button onClick={() => navigate('/admin/doctors')} className="bg-medical-600 hover:bg-medical-700">
                   View All Doctors
                 </Button>
                 <Button onClick={() => navigate('/admin/doctors/create')} variant="outline">
                   Add New Doctor
+                </Button>
+                <Button onClick={() => navigate('/admin/time-slots')} variant="outline">
+                  Manage Time Slots
                 </Button>
               </CardFooter>
             </Card>

@@ -6,6 +6,7 @@ import NotFound from './pages/NotFound';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminDoctors from './pages/AdminDoctors';
 import AdminReports from './pages/AdminReports';
+import AdminTimeSlots from './pages/AdminTimeSlots';
 import Booking from './pages/Booking';
 import Contact from './pages/Contact';
 import Doctors from './pages/Doctors';
@@ -32,6 +33,7 @@ const App = () => {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/doctors" element={<AdminDoctors />} />
         <Route path="/admin/reports" element={<AdminReports />} />
+        <Route path="/admin/time-slots" element={<AdminTimeSlots />} />
         <Route path="/admin/doctors/create" element={<CreateDoctor />} />
         <Route path="/admin/doctors/edit/:id" element={<EditDoctor />} />
         <Route path="/admin/doctors/view/:id" element={<ViewDoctor />} />

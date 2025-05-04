@@ -3,14 +3,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Doctor, Dispensary } from '@/api/models';
-import { DoctorService, DispensaryService } from '@/api/services';
-import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Edit, Trash2, MapPin, CalendarDays } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { DoctorService, DispensaryService } from '@/api/services';
+import { Doctor, Dispensary } from '@/api/models';
+import { Calendar } from 'lucide-react';
 
 const ViewDoctor = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,7 +20,7 @@ const ViewDoctor = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    const fetchDoctorData = async () => {
+    const fetchDoctor = async () => {
       if (!id) return;
       
       try {
@@ -29,45 +28,47 @@ const ViewDoctor = () => {
         const doctorData = await DoctorService.getDoctorById(id);
         setDoctor(doctorData);
         
-        if (doctorData && doctorData.dispensaries?.length > 0) {
-          // Fetch associated dispensaries
-          const dispensariesData = await DispensaryService.getDispensariesByDoctorId(id);
-          setDispensaries(dispensariesData);
+        if (doctorData.dispensaries && doctorData.dispensaries.length > 0) {
+          const dispensaryPromises = doctorData.dispensaries.map(
+            (dispensaryId) => DispensaryService.getDispensaryById(dispensaryId)
+          );
+          const dispensariesData = await Promise.all(dispensaryPromises);
+          setDispensaries(dispensariesData.filter(Boolean) as Dispensary[]);
         }
       } catch (error) {
-        console.error('Error fetching doctor data:', error);
+        console.error('Error fetching doctor:', error);
         toast({
           title: 'Error',
           description: 'Failed to load doctor information',
-          variant: 'destructive'
+          variant: 'destructive',
         });
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchDoctorData();
+    fetchDoctor();
   }, [id, toast]);
   
   const handleDelete = async () => {
     if (!id) return;
     
-    if (!window.confirm('Are you sure you want to delete this doctor?')) return;
-    
-    try {
-      await DoctorService.deleteDoctor(id);
-      toast({
-        title: 'Success',
-        description: 'Doctor deleted successfully'
-      });
-      navigate('/admin/doctors');
-    } catch (error) {
-      console.error('Error deleting doctor:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete doctor',
-        variant: 'destructive'
-      });
+    if (window.confirm('Are you sure you want to delete this doctor?')) {
+      try {
+        await DoctorService.deleteDoctor(id);
+        toast({
+          title: 'Success',
+          description: 'Doctor deleted successfully',
+        });
+        navigate('/admin/doctors');
+      } catch (error) {
+        console.error('Error deleting doctor:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to delete doctor',
+          variant: 'destructive',
+        });
+      }
     }
   };
   
@@ -75,10 +76,8 @@ const ViewDoctor = () => {
     return (
       <div className="flex flex-col min-h-screen">
         <Header />
-        <main className="container mx-auto px-4 py-8 flex-grow">
-          <div className="flex justify-center items-center h-full">
-            <p>Loading doctor information...</p>
-          </div>
+        <main className="flex-grow flex items-center justify-center">
+          <p>Loading doctor information...</p>
         </main>
         <Footer />
       </div>
@@ -114,126 +113,112 @@ const ViewDoctor = () => {
       <Header />
       <main className="container mx-auto px-4 py-8 flex-grow">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Doctor Details</h1>
-          <div className="space-x-2">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate(`/admin/doctors/edit/${id}`)}
-            >
-              <Edit className="mr-2 h-4 w-4" /> Edit
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleDelete}
-              className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete
-            </Button>
-          </div>
+          <h1 className="text-3xl font-bold">Doctor Profile</h1>
+          <Button onClick={() => navigate('/admin/doctors')} variant="outline">
+            Back to Doctors
+          </Button>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             <Card>
-              <div className="aspect-[4/3] relative">
-                <img
-                  src={doctor.profilePicture || 'https://randomuser.me/api/portraits/lego/0.jpg'}
-                  alt={doctor.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <CardHeader>
+              <CardHeader className="text-center">
+                <div className="flex justify-center mb-4">
+                  {doctor.profilePicture ? (
+                    <img
+                      src={doctor.profilePicture}
+                      alt={doctor.name}
+                      className="rounded-full w-32 h-32 object-cover"
+                    />
+                  ) : (
+                    <div className="rounded-full w-32 h-32 bg-gray-200 flex items-center justify-center">
+                      <span className="text-4xl font-light text-gray-500">
+                        {doctor.name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <CardTitle>{doctor.name}</CardTitle>
-                <CardDescription>
-                  <Badge className="mr-2">{doctor.specialization}</Badge>
-                </CardDescription>
+                <CardDescription>{doctor.specialization}</CardDescription>
               </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Qualifications</h3>
+                    <p>{doctor.qualifications.join(', ')}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Contact</h3>
+                    <p>{doctor.contactNumber}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500">Email</h3>
+                    <p>{doctor.email}</p>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button
+                  onClick={() => navigate(`/admin/doctors/edit/${id}`)}
+                  variant="outline"
+                >
+                  Edit Profile
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  variant="destructive"
+                >
+                  Delete
+                </Button>
+              </CardFooter>
             </Card>
           </div>
           
           <div className="lg:col-span-2">
-            <Card>
+            <Card className="mb-6">
               <CardHeader>
-                <CardTitle>Professional Information</CardTitle>
+                <CardTitle>Associated Dispensaries</CardTitle>
+                <CardDescription>
+                  Dispensaries where this doctor provides services
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Qualifications</h3>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {doctor.qualifications.map((qualification, index) => (
-                      <Badge key={index} variant="secondary">
-                        {qualification}
-                      </Badge>
+              <CardContent>
+                {dispensaries.length === 0 ? (
+                  <p className="text-gray-500 italic">
+                    This doctor is not associated with any dispensaries yet
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {dispensaries.map((dispensary) => (
+                      <div key={dispensary.id} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-medium">{dispensary.name}</h3>
+                            <p className="text-sm text-gray-500">{dispensary.address}</p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => navigate(`/admin/dispensaries/view/${dispensary.id}`)}
+                            >
+                              View
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              onClick={() => navigate(`/doctor/${doctor.id}/dispensary/${dispensary.id}/time-slots`)}
+                              className="bg-medical-600 hover:bg-medical-700"
+                            >
+                              <Calendar className="mr-2 h-4 w-4" />
+                              Manage Time Slots
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Contact Information</h3>
-                  <div className="mt-1">
-                    <p>
-                      <span className="font-medium">Email:</span>{' '}
-                      <a href={`mailto:${doctor.email}`} className="text-medical-600 hover:underline">
-                        {doctor.email}
-                      </a>
-                    </p>
-                    <p>
-                      <span className="font-medium">Phone:</span>{' '}
-                      <a href={`tel:${doctor.contactNumber}`} className="text-medical-600 hover:underline">
-                        {doctor.contactNumber}
-                      </a>
-                    </p>
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Associated Dispensaries</h3>
-                  <div className="mt-1">
-                    {dispensaries.length === 0 ? (
-                      <p className="text-gray-400">No associated dispensaries</p>
-                    ) : (
-                      <div className="space-y-2 mt-2">
-                        {dispensaries.map(dispensary => (
-                          <div 
-                            key={dispensary.id}
-                            className="p-3 bg-gray-50 rounded-md"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h4 className="font-medium">{dispensary.name}</h4>
-                                <div className="flex items-start mt-1 text-sm text-gray-500">
-                                  <MapPin className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
-                                  <span>{dispensary.address}</span>
-                                </div>
-                              </div>
-                              <Button 
-                                size="sm"
-                                variant="outline"
-                                onClick={() => navigate(`/admin/timeslots/${doctor.id}/${dispensary.id}`)}
-                              >
-                                <CalendarDays className="h-4 w-4 mr-1" />
-                                Manage Slots
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
               </CardContent>
-              <CardFooter>
-                <Button 
-                  onClick={() => navigate('/admin/doctors')}
-                  className="w-full"
-                >
-                  Back to Doctors List
-                </Button>
-              </CardFooter>
             </Card>
           </div>
         </div>
