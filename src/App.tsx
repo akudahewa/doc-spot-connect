@@ -17,6 +17,7 @@ import ViewDoctor from './pages/ViewDoctor';
 import CreateDispensary from './pages/CreateDispensary';
 import EditDispensary from './pages/EditDispensary';
 import ViewDispensary from './pages/ViewDispensary';
+import AdminDispensaries from './pages/AdminDispensaries';
 
 const App = () => {
   return (
@@ -32,6 +33,7 @@ const App = () => {
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/doctors" element={<AdminDoctors />} />
+        <Route path="/admin/dispensaries" element={<AdminDispensaries />} />
         <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/admin/time-slots" element={<AdminTimeSlots />} />
         <Route path="/admin/doctors/create" element={<CreateDoctor />} />
