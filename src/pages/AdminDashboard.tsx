@@ -245,7 +245,7 @@ const AdminDashboard = () => {
                     <CardDescription>Manage your dispensary operations</CardDescription>
                   </CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <Button onClick={() => navigate('/admin/dispensary/doctors')} className="w-full">
+                    <Button onClick={() => navigate('/admin/doctors')} className="w-full">
                       Manage Doctors
                     </Button>
                     <Button onClick={() => navigate('/admin/dispensary/timeslots')} className="w-full">
@@ -286,10 +286,15 @@ const AdminDashboard = () => {
                 <CardDescription>View and manage all dispensaries in the system</CardDescription>
               </CardHeader>
               <CardContent>
-                <p>Dispensaries list will be displayed here based on user role permissions.</p>
+                <p>Manage dispensary locations, contact information, and associated doctors.</p>
               </CardContent>
-              <CardFooter>
-                <Button onClick={() => navigate('/admin/dispensaries')}>View All Dispensaries</Button>
+              <CardFooter className="flex justify-between">
+                <Button onClick={() => navigate('/admin/dispensaries')} className="bg-medical-600 hover:bg-medical-700">
+                  View All Dispensaries
+                </Button>
+                <Button onClick={() => navigate('/admin/dispensaries/create')} variant="outline">
+                  Add New Dispensary
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
@@ -301,10 +306,15 @@ const AdminDashboard = () => {
                 <CardDescription>View and manage all doctors in the system</CardDescription>
               </CardHeader>
               <CardContent>
-                <p>Doctors list will be displayed here based on user role permissions.</p>
+                <p>Manage doctor profiles, specializations, qualifications, and dispensary assignments.</p>
               </CardContent>
-              <CardFooter>
-                <Button onClick={() => navigate('/admin/doctors')}>View All Doctors</Button>
+              <CardFooter className="flex justify-between">
+                <Button onClick={() => navigate('/admin/doctors')} className="bg-medical-600 hover:bg-medical-700">
+                  View All Doctors
+                </Button>
+                <Button onClick={() => navigate('/admin/doctors/create')} variant="outline">
+                  Add New Doctor
+                </Button>
               </CardFooter>
             </Card>
           </TabsContent>
