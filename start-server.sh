@@ -20,7 +20,7 @@ if [ ! -f ".env" ]; then
   echo "Warning: .env file not found in server directory."
   echo "Creating a default .env file..."
   echo "MONGODB_URI=mongodb+srv://myclinicuser:1qaz2wsx%40E@myclinic-cluster.ht5hi.mongodb.net/?retryWrites=true&w=majority&appName=myclinic-cluster" > .env
-  echo "PORT=5000" >> .env
+  echo "PORT=5001" >> .env
   echo "JWT_SECRET=myclinic-secret-key-change-in-production" >> .env
   echo "Default .env file created."
 fi

@@ -33,6 +33,7 @@ const Login = () => {
         
         // Get Auth0 configuration
         try {
+          console.log("XXXXXXXX "+`${API_URL}`);
           const auth0Response = await axios.get(`${API_URL}/auth/config`);
           console.log('Auth0 config received:', auth0Response.data);
           setAuth0Config(auth0Response.data);

@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 
 // Auth0 JWT validation middleware with improved error handling
 const validateJwt = (req, res, next) => {
+  console.log("vvvvvvvvv=====")
   // Skip validation if no auth header is present (for development)
   if (process.env.NODE_ENV === 'development' && !req.headers.authorization) {
     console.log('Development mode: Skipping JWT validation');
