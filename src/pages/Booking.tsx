@@ -18,7 +18,7 @@ const Booking = () => {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Book Your Appointment</h1>
             <p className="text-gray-600 mt-2">
-              Select your preferred doctor, location, and time
+              Select your preferred doctor, location, date, and appointment time
             </p>
           </div>
           

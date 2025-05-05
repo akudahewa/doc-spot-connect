@@ -54,6 +54,7 @@ export interface AbsentTimeSlot extends BaseModel {
   reason?: string;
   isModifiedSession?: boolean; // Flag to indicate if this is a modified session rather than absence
   maxPatients?: number; // If modified session, can specify different max patients
+  minutesPerPatient?: number; // Minutes allocated per patient for this specific session
 }
 
 // Patient model
@@ -82,9 +83,13 @@ export interface Booking extends BaseModel {
   dispensaryId: string;
   bookingDate: Date;
   timeSlot: string; // Format: "HH:MM-HH:MM"
+  appointmentNumber: number; // Sequential appointment number for the session
+  estimatedTime: string; // Format: "HH:MM" - Estimated time of appointment
   status: BookingStatus;
   notes?: string;
   symptoms?: string;
+  isPaid: boolean;
+  isPatientVisited: boolean;
   checkedInTime?: Date;
   completedTime?: Date;
 }

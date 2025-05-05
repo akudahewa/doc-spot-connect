@@ -1,7 +1,11 @@
 
 import { Booking, BookingStatus } from '../models';
+import axios from 'axios';
+import { TimeSlotService, AvailableTimeSlot } from './TimeSlotService';
 
-// Mocked bookings data
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Mocked bookings data - will be replaced with API calls in real implementation
 const mockBookings: Booking[] = [
   {
     id: '1',
@@ -10,9 +14,13 @@ const mockBookings: Booking[] = [
     dispensaryId: '1',
     bookingDate: new Date('2023-07-10'), // A Monday
     timeSlot: '18:00-18:20',
+    appointmentNumber: 1,
+    estimatedTime: '18:00',
     status: BookingStatus.COMPLETED,
     notes: 'Regular checkup',
     symptoms: 'Headache, fever',
+    isPaid: true,
+    isPatientVisited: true,
     checkedInTime: new Date('2023-07-10T18:05:00'),
     completedTime: new Date('2023-07-10T18:18:00'),
     createdAt: new Date('2023-07-05'),
@@ -25,8 +33,12 @@ const mockBookings: Booking[] = [
     dispensaryId: '1',
     bookingDate: new Date('2023-07-10'), // A Monday
     timeSlot: '18:20-18:40',
+    appointmentNumber: 2,
+    estimatedTime: '18:20',
     status: BookingStatus.COMPLETED,
     symptoms: 'Cough, cold',
+    isPaid: true,
+    isPatientVisited: true,
     checkedInTime: new Date('2023-07-10T18:15:00'),
     completedTime: new Date('2023-07-10T18:35:00'),
     createdAt: new Date('2023-07-08'),
@@ -39,8 +51,12 @@ const mockBookings: Booking[] = [
     dispensaryId: '1',
     bookingDate: new Date('2023-07-17'), // Next Monday
     timeSlot: '18:00-18:20',
+    appointmentNumber: 1,
+    estimatedTime: '18:00',
     status: BookingStatus.SCHEDULED,
     symptoms: 'Annual checkup',
+    isPaid: false,
+    isPatientVisited: false,
     createdAt: new Date('2023-07-12'),
     updatedAt: new Date('2023-07-12')
   }
@@ -53,91 +69,251 @@ export const BookingService = {
     dispensaryId: string,
     date: Date
   ): Promise<Booking[]> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Filter bookings by doctor, dispensary, and date
-    return mockBookings.filter(booking => 
-      booking.doctorId === doctorId &&
-      booking.dispensaryId === dispensaryId &&
-      booking.bookingDate.toDateString() === date.toDateString()
-    );
+    try {
+      const token = localStorage.getItem('auth_token');
+      const formattedDate = date.toISOString().split('T')[0];
+      
+      const response = await axios.get(
+        `${API_URL}/bookings/doctor/${doctorId}/dispensary/${dispensaryId}/date/${formattedDate}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return response.data.map((booking: any) => ({
+        ...booking,
+        id: booking._id,
+        bookingDate: new Date(booking.bookingDate),
+        checkedInTime: booking.checkedInTime ? new Date(booking.checkedInTime) : undefined,
+        completedTime: booking.completedTime ? new Date(booking.completedTime) : undefined,
+        createdAt: new Date(booking.createdAt),
+        updatedAt: new Date(booking.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      // Fall back to mock data for demo purposes
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      return mockBookings.filter(booking => 
+        booking.doctorId === doctorId &&
+        booking.dispensaryId === dispensaryId &&
+        booking.bookingDate.toDateString() === date.toDateString()
+      );
+    }
   },
 
   // Get a booking by ID
   getBookingById: async (id: string): Promise<Booking | null> => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return mockBookings.find(booking => booking.id === id) || null;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/bookings/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (!response.data) return null;
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        bookingDate: new Date(response.data.bookingDate),
+        checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
+        completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error fetching booking by ID:', error);
+      // Fall back to mock data
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return mockBookings.find(booking => booking.id === id) || null;
+    }
   },
 
   // Get all bookings for a patient
   getBookingsByPatient: async (patientId: string): Promise<Booking[]> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return mockBookings.filter(booking => booking.patientId === patientId);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/bookings/patient/${patientId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return response.data.map((booking: any) => ({
+        ...booking,
+        id: booking._id,
+        bookingDate: new Date(booking.bookingDate),
+        checkedInTime: booking.checkedInTime ? new Date(booking.checkedInTime) : undefined,
+        completedTime: booking.completedTime ? new Date(booking.completedTime) : undefined,
+        createdAt: new Date(booking.createdAt),
+        updatedAt: new Date(booking.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching patient bookings:', error);
+      // Fall back to mock data
+      await new Promise(resolve => setTimeout(resolve, 400));
+      return mockBookings.filter(booking => booking.patientId === patientId);
+    }
   },
 
   // Create a new booking
-  createBooking: async (booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>): Promise<Booking> => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    // In a real system, you would validate:
-    // 1. The doctor is available at that time
-    // 2. The time slot is not already fully booked
-    // 3. The doctor is not marked as absent
-    
-    const newBooking: Booking = {
-      ...booking,
-      id: Math.random().toString(36).substring(2, 11),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    return newBooking;
+  createBooking: async (booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt' | 'isPaid' | 'isPatientVisited'>): Promise<Booking> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      // Format booking date if it's a Date object
+      const bookingToSend = {
+        ...booking,
+        bookingDate: booking.bookingDate instanceof Date 
+          ? booking.bookingDate.toISOString() 
+          : booking.bookingDate,
+      };
+      
+      const response = await axios.post(
+        `${API_URL}/bookings`, 
+        bookingToSend,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        bookingDate: new Date(response.data.bookingDate),
+        isPaid: response.data.isPaid || false,
+        isPatientVisited: response.data.isPatientVisited || false,
+        checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
+        completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      
+      // For mock purposes, create a simulated response
+      await new Promise(resolve => setTimeout(resolve, 600));
+      
+      const newBooking: Booking = {
+        ...booking,
+        id: Math.random().toString(36).substring(2, 11),
+        isPaid: false,
+        isPatientVisited: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      return newBooking;
+    }
   },
 
   // Update booking status
   updateBookingStatus: async (
     id: string, 
     status: BookingStatus,
-    additionalInfo?: { checkedInTime?: Date; completedTime?: Date; notes?: string }
-  ): Promise<Booking | null> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    const existingBookingIndex = mockBookings.findIndex(b => b.id === id);
-    
-    if (existingBookingIndex === -1) {
-      return null;
+    additionalInfo?: { 
+      checkedInTime?: Date; 
+      completedTime?: Date; 
+      notes?: string;
+      isPaid?: boolean;
+      isPatientVisited?: boolean;
     }
-    
-    const updatedBooking = {
-      ...mockBookings[existingBookingIndex],
-      status,
-      ...(additionalInfo || {}),
-      updatedAt: new Date()
-    };
-    
-    return updatedBooking;
+  ): Promise<Booking | null> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      // Prepare data to send
+      const updateData = {
+        status,
+        ...additionalInfo,
+        checkedInTime: additionalInfo?.checkedInTime instanceof Date 
+          ? additionalInfo.checkedInTime.toISOString() 
+          : additionalInfo?.checkedInTime,
+        completedTime: additionalInfo?.completedTime instanceof Date
+          ? additionalInfo.completedTime.toISOString()
+          : additionalInfo?.completedTime
+      };
+      
+      const response = await axios.patch(
+        `${API_URL}/bookings/${id}/status`, 
+        updateData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (!response.data) return null;
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        bookingDate: new Date(response.data.bookingDate),
+        checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
+        completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      
+      // Mock response
+      await new Promise(resolve => setTimeout(resolve, 400));
+      
+      const existingBookingIndex = mockBookings.findIndex(b => b.id === id);
+      
+      if (existingBookingIndex === -1) {
+        return null;
+      }
+      
+      const updatedBooking = {
+        ...mockBookings[existingBookingIndex],
+        status,
+        ...(additionalInfo || {}),
+        updatedAt: new Date()
+      };
+      
+      return updatedBooking;
+    }
   },
 
   // Cancel a booking
   cancelBooking: async (id: string, reason?: string): Promise<Booking | null> => {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    const existingBookingIndex = mockBookings.findIndex(b => b.id === id);
-    
-    if (existingBookingIndex === -1) {
-      return null;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.patch(
+        `${API_URL}/bookings/${id}/cancel`, 
+        { reason },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (!response.data) return null;
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        bookingDate: new Date(response.data.bookingDate),
+        checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
+        completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      
+      // Mock response
+      await new Promise(resolve => setTimeout(resolve, 400));
+      
+      const existingBookingIndex = mockBookings.findIndex(b => b.id === id);
+      
+      if (existingBookingIndex === -1) {
+        return null;
+      }
+      
+      const updatedBooking = {
+        ...mockBookings[existingBookingIndex],
+        status: BookingStatus.CANCELLED,
+        notes: reason 
+          ? `${mockBookings[existingBookingIndex].notes || ''} Cancellation reason: ${reason}`.trim()
+          : mockBookings[existingBookingIndex].notes,
+        updatedAt: new Date()
+      };
+      
+      return updatedBooking;
     }
-    
-    const updatedBooking = {
-      ...mockBookings[existingBookingIndex],
-      status: BookingStatus.CANCELLED,
-      notes: reason 
-        ? `${mockBookings[existingBookingIndex].notes || ''} Cancellation reason: ${reason}`.trim()
-        : mockBookings[existingBookingIndex].notes,
-      updatedAt: new Date()
-    };
-    
-    return updatedBooking;
   },
 
   // Get available time slots for a doctor at a dispensary on a specific date
@@ -145,31 +321,74 @@ export const BookingService = {
     doctorId: string,
     dispensaryId: string,
     date: Date
-  ): Promise<string[]> => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    // In a real system, you would:
-    // 1. Get the time slot configuration for that day of week
-    // 2. Check for any absent time slots
-    // 3. Check existing bookings
-    // 4. Calculate available slots
-    
-    // For this mock, we'll return some fake available slots
-    const dayOfWeek = date.getDay();
-    
-    // Return different slots based on the day
-    if (dayOfWeek === 0) { // Sunday
-      return ['10:00-10:20', '10:20-10:40', '10:40-11:00', '11:00-11:20', 
-              '11:20-11:40', '11:40-12:00', '12:00-12:20', '12:20-12:40', 
-              '12:40-13:00', '13:00-13:20', '13:20-13:40', '13:40-14:00'];
-    } else if (dayOfWeek === 6) { // Saturday
-      return ['12:00-12:20', '12:20-12:40', '12:40-13:00', '13:00-13:20', 
-              '13:20-13:40', '13:40-14:00', '14:00-14:20', '14:20-14:40', 
-              '14:40-15:00', '15:00-15:20', '15:20-15:40', '15:40-16:00'];
-    } else { // Weekdays
-      return ['18:00-18:20', '18:20-18:40', '18:40-19:00', '19:00-19:20', 
-              '19:20-19:40', '19:40-20:00', '20:00-20:20', '20:20-20:40', 
-              '20:40-21:00', '21:00-21:20', '21:20-21:40', '21:40-22:00'];
+  ): Promise<AvailableTimeSlot[]> => {
+    try {
+      return TimeSlotService.getAvailableTimeSlots(doctorId, dispensaryId, date);
+    } catch (error) {
+      console.error('Error fetching available time slots:', error);
+      
+      // Mock response
+      await new Promise(resolve => setTimeout(resolve, 600));
+      
+      // In a real system, you would:
+      // 1. Get the time slot configuration for that day of week
+      // 2. Check for any absent time slots
+      // 3. Check existing bookings
+      // 4. Calculate available slots
+      
+      // For this mock, we'll return some fake available slots
+      const dayOfWeek = date.getDay();
+      
+      // Define variables for different day scenarios
+      let slots: AvailableTimeSlot[] = [];
+      const minutesPerPatient = 20;
+      
+      // Return different slots based on the day
+      if (dayOfWeek === 0) { // Sunday
+        for (let i = 1; i <= 12; i++) {
+          const hour = Math.floor((i - 1) / 3) + 10;
+          const minute = ((i - 1) % 3) * 20;
+          const endMinute = (minute + minutesPerPatient) % 60;
+          const endHour = hour + Math.floor((minute + minutesPerPatient) / 60);
+          
+          slots.push({
+            appointmentNumber: i,
+            timeSlot: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}-${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`,
+            estimatedTime: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+            minutesPerPatient
+          });
+        }
+      } else if (dayOfWeek === 6) { // Saturday
+        for (let i = 1; i <= 12; i++) {
+          const hour = Math.floor((i - 1) / 3) + 12;
+          const minute = ((i - 1) % 3) * 20;
+          const endMinute = (minute + minutesPerPatient) % 60;
+          const endHour = hour + Math.floor((minute + minutesPerPatient) / 60);
+          
+          slots.push({
+            appointmentNumber: i,
+            timeSlot: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}-${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`,
+            estimatedTime: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+            minutesPerPatient
+          });
+        }
+      } else { // Weekdays
+        for (let i = 1; i <= 12; i++) {
+          const hour = Math.floor((i - 1) / 3) + 18;
+          const minute = ((i - 1) % 3) * 20;
+          const endMinute = (minute + minutesPerPatient) % 60;
+          const endHour = hour + Math.floor((minute + minutesPerPatient) / 60);
+          
+          slots.push({
+            appointmentNumber: i,
+            timeSlot: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}-${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`,
+            estimatedTime: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+            minutesPerPatient
+          });
+        }
+      }
+      
+      return slots;
     }
   }
 };

@@ -33,6 +33,9 @@ const absentTimeSlotSchema = new mongoose.Schema({
   },
   maxPatients: {
     type: Number
+  },
+  minutesPerPatient: {
+    type: Number
   }
 }, { 
   timestamps: {

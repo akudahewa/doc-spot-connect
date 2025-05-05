@@ -4,6 +4,13 @@ import { TimeSlotConfig, AbsentTimeSlot } from '@/api/models';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+export interface AvailableTimeSlot {
+  appointmentNumber: number;
+  timeSlot: string;
+  estimatedTime: string;
+  minutesPerPatient: number;
+}
+
 export const TimeSlotService = {
   // Get time slots for a doctor at a specific dispensary
   getTimeSlotConfigsByDoctor: async (doctorId: string, dispensaryId: string): Promise<TimeSlotConfig[]> => {
@@ -134,6 +141,7 @@ export const TimeSlotService = {
         date: new Date(slot.date),
         isModifiedSession: slot.isModifiedSession || false,
         maxPatients: slot.maxPatients || 0,
+        minutesPerPatient: slot.minutesPerPatient || null,
         createdAt: new Date(slot.createdAt),
         updatedAt: new Date(slot.updatedAt)
       }));
@@ -166,6 +174,7 @@ export const TimeSlotService = {
         date: new Date(response.data.date),
         isModifiedSession: response.data.isModifiedSession || false,
         maxPatients: response.data.maxPatients || 0,
+        minutesPerPatient: response.data.minutesPerPatient || null,
         createdAt: new Date(response.data.createdAt),
         updatedAt: new Date(response.data.updatedAt)
       };
@@ -186,6 +195,25 @@ export const TimeSlotService = {
     } catch (error) {
       console.error('Error deleting absent time slot:', error);
       throw new Error('Failed to delete absent time slot');
+    }
+  },
+  
+  // Get available time slots with appointment numbers
+  getAvailableTimeSlots: async (
+    doctorId: string,
+    dispensaryId: string,
+    date: Date
+  ): Promise<AvailableTimeSlot[]> => {
+    try {
+      const formattedDate = date.toISOString().split('T')[0];
+      const response = await axios.get(
+        `${API_URL}/timeslots/available/${doctorId}/${dispensaryId}/${formattedDate}`
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching available time slots:', error);
+      throw new Error('Failed to fetch available time slots');
     }
   }
 };
