@@ -93,6 +93,7 @@ export const BookingService = {
     date: Date
   ): Promise<AvailableTimeSlot | null> => {
     try {
+      // Make sure we only use the date part without the time
       const formattedDate = date.toISOString().split('T')[0];
       const response = await axios.get(
         `${API_URL}/bookings/next-available/${doctorId}/${dispensaryId}/${formattedDate}`
@@ -118,12 +119,13 @@ export const BookingService = {
     try {
       const token = localStorage.getItem('auth_token');
       
-      // Format booking date if it's a Date object
+      // Format booking date to only send the date part (YYYY-MM-DD)
+      // This ensures that no time zone conversion issues occur
+      const formattedDate = bookingData.bookingDate.toISOString().split('T')[0];
+      
       const bookingToSend = {
         ...bookingData,
-        bookingDate: bookingData.bookingDate instanceof Date 
-          ? bookingData.bookingDate.toISOString() 
-          : bookingData.bookingDate,
+        bookingDate: formattedDate,
       };
       
       console.log("Sending booking request:", bookingToSend);

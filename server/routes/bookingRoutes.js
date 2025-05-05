@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const Booking = require('../models/Booking');
@@ -87,8 +88,12 @@ router.post('/', async (req, res) => {
     // Generate a temporary patientId if not provided
     const patientId = req.body.patientId || `temp-${patientPhone}`;
     
-    // Generate booking date from string if needed
-    const parsedBookingDate = new Date(bookingDate);
+    // Generate booking date from string - ensure we use the date only
+    // Create date with the local timezone, without any time component
+    const parsedDate = bookingDate.split('T')[0];
+    const parsedBookingDate = new Date(parsedDate + 'T00:00:00');
+    
+    console.log("Parsed booking date:", parsedBookingDate);
     
     // 1. Find the next available appointment
     const dayOfWeek = parsedBookingDate.getDay();
@@ -302,8 +307,9 @@ router.get('/next-available/:doctorId/:dispensaryId/:date', async (req, res) => 
   try {
     const { doctorId, dispensaryId, date } = req.params;
     
-    // Parse the date
-    const bookingDate = new Date(date);
+    // Parse the date - ensure it's just the date part
+    const parsedDate = date.split('T')[0];
+    const bookingDate = new Date(parsedDate + 'T00:00:00');
     
     // Get day of week (0-6, where 0 is Sunday)
     const dayOfWeek = bookingDate.getDay();
