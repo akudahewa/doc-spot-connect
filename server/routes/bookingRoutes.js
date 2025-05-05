@@ -82,6 +82,8 @@ router.post('/', async (req, res) => {
       symptoms
     } = req.body;
 
+    console.log("Received booking request:", req.body);
+    
     // Generate a temporary patientId if not provided
     const patientId = req.body.patientId || `temp-${patientPhone}`;
     
@@ -90,6 +92,7 @@ router.post('/', async (req, res) => {
     
     // 1. Find the next available appointment
     const dayOfWeek = parsedBookingDate.getDay();
+    console.log("Day of week:", dayOfWeek);
     
     // Get the time slot configuration
     const timeSlotConfig = await TimeSlotConfig.findOne({
@@ -97,6 +100,8 @@ router.post('/', async (req, res) => {
       dispensaryId,
       dayOfWeek
     });
+    
+    console.log("Time slot config:", timeSlotConfig);
     
     if (!timeSlotConfig) {
       return res.status(400).json({ 
@@ -120,6 +125,8 @@ router.post('/', async (req, res) => {
       }
     });
     
+    console.log("Absent/Modified slot:", absentSlot);
+    
     // If completely absent (not a modified session), return an error
     if (absentSlot && !absentSlot.isModifiedSession) {
       return res.status(400).json({ 
@@ -139,8 +146,10 @@ router.post('/', async (req, res) => {
       startTime = timeSlotConfig.startTime;
       endTime = timeSlotConfig.endTime;
       maxPatients = timeSlotConfig.maxPatients;
-      minutesPerPatient = timeSlotConfig.minutesPerPatient;
+      minutesPerPatient = timeSlotConfig.minutesPerPatient || 15; // Default to 15 minutes if not set
     }
+    
+    console.log("Session parameters:", { startTime, endTime, maxPatients, minutesPerPatient });
     
     // Find existing bookings for this session
     const existingBookings = await Booking.find({
@@ -152,6 +161,8 @@ router.post('/', async (req, res) => {
       },
       status: { $ne: 'cancelled' }
     }).sort({ appointmentNumber: 1 });
+    
+    console.log("Existing bookings count:", existingBookings.length);
     
     // If all slots are booked
     if (existingBookings.length >= maxPatients) {
@@ -174,6 +185,8 @@ router.post('/', async (req, res) => {
       nextAppointmentNumber++;
     }
     
+    console.log("Next appointment number:", nextAppointmentNumber);
+    
     // Calculate the estimated time for this appointment
     const [startHour, startMinute] = startTime.split(':').map(Number);
     const appointmentOffset = (nextAppointmentNumber - 1) * minutesPerPatient; // Minutes from start time
@@ -186,6 +199,8 @@ router.post('/', async (req, res) => {
     const estimatedMinutes = appointmentDateTime.getMinutes().toString().padStart(2, '0');
     const estimatedTime = `${estimatedHours}:${estimatedMinutes}`;
     
+    console.log("Estimated time:", estimatedTime);
+    
     // Calculate the time slot range (e.g., "18:00-18:20")
     const endOfAppointment = new Date(appointmentDateTime);
     endOfAppointment.setMinutes(endOfAppointment.getMinutes() + minutesPerPatient);
@@ -194,6 +209,8 @@ router.post('/', async (req, res) => {
     const endMinutes = endOfAppointment.getMinutes().toString().padStart(2, '0');
     
     const timeSlot = `${estimatedHours}:${estimatedMinutes}-${endHours}:${endMinutes}`;
+    
+    console.log("Time slot:", timeSlot);
     
     // Create the booking
     const booking = new Booking({
@@ -214,6 +231,7 @@ router.post('/', async (req, res) => {
     });
     
     await booking.save();
+    console.log("Booking created successfully:", booking);
     res.status(201).json(booking);
     
   } catch (error) {
@@ -336,7 +354,7 @@ router.get('/next-available/:doctorId/:dispensaryId/:date', async (req, res) => 
       startTime = timeSlotConfig.startTime;
       endTime = timeSlotConfig.endTime;
       maxPatients = timeSlotConfig.maxPatients;
-      minutesPerPatient = timeSlotConfig.minutesPerPatient;
+      minutesPerPatient = timeSlotConfig.minutesPerPatient || 15; // Default to 15 minutes if not set
     }
     
     // 3. Get already booked appointments for this day

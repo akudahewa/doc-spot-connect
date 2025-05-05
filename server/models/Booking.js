@@ -67,6 +67,10 @@ const bookingSchema = new mongoose.Schema({
   },
   patientEmail: {
     type: String
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true

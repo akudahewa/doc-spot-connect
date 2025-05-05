@@ -114,9 +114,6 @@ export const BookingService = {
     doctorId: string;
     dispensaryId: string;
     bookingDate: Date;
-    timeSlot?: string;
-    appointmentNumber?: number;
-    estimatedTime?: string;
   }): Promise<Booking> => {
     try {
       const token = localStorage.getItem('auth_token');
@@ -128,6 +125,8 @@ export const BookingService = {
           ? bookingData.bookingDate.toISOString() 
           : bookingData.bookingDate,
       };
+      
+      console.log("Sending booking request:", bookingToSend);
       
       const response = await axios.post(
         `${API_URL}/bookings`, 
