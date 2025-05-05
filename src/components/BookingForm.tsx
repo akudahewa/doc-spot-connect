@@ -13,6 +13,7 @@ import { DoctorService, DispensaryService, BookingService } from '@/api/services
 import { Doctor, Dispensary, BookingStatus } from '@/api/models';
 import { AvailableTimeSlot } from '@/api/services/TimeSlotService';
 import { Clock, Calendar as CalendarIcon, User } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 interface BookingFormProps {
   initialDoctorId?: string;
@@ -28,10 +29,7 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [selectedDispensary, setSelectedDispensary] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(addDays(new Date(), 1));
-  const [availableSlots, setAvailableSlots] = useState<AvailableTimeSlot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<string>('');
-  const [selectedAppointmentNumber, setSelectedAppointmentNumber] = useState<number | null>(null);
-  const [selectedEstimatedTime, setSelectedEstimatedTime] = useState<string | null>(null);
+  const [nextAppointment, setNextAppointment] = useState<AvailableTimeSlot | null>(null);
   
   // Patient info
   const [name, setName] = useState('');
@@ -42,6 +40,7 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [dateError, setDateError] = useState<string | null>(null);
   
   // Load initial data
   useEffect(() => {
@@ -128,39 +127,41 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
     fetchDispensaryDoctors();
   }, [selectedDispensary, selectedDoctor]);
   
-  // Load available slots when doctor, dispensary, and date are selected
+  // Load next available appointment when doctor, dispensary, and date are selected
   useEffect(() => {
-    const fetchAvailableSlots = async () => {
+    const fetchNextAppointment = async () => {
       if (!selectedDoctor || !selectedDispensary || !selectedDate) return;
       
       try {
         setIsLoading(true);
-        const slots = await BookingService.getAvailableTimeSlots(
+        setDateError(null);
+        
+        const nextAvailable = await BookingService.getNextAvailableAppointment(
           selectedDoctor,
           selectedDispensary,
           selectedDate
         );
-        setAvailableSlots(slots);
-        setSelectedSlot('');
-        setSelectedAppointmentNumber(null);
-        setSelectedEstimatedTime(null);
+        
+        if (nextAvailable) {
+          setNextAppointment(nextAvailable);
+        } else {
+          setNextAppointment(null);
+          setDateError('No appointments available for this date. Please select another date.');
+        }
       } catch (error) {
-        console.error('Error loading available slots:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load available time slots',
-          variant: 'destructive'
-        });
+        console.error('Error loading next available appointment:', error);
+        setNextAppointment(null);
+        setDateError('Failed to load appointment information. The doctor may not be available on this date.');
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchAvailableSlots();
-  }, [selectedDoctor, selectedDispensary, selectedDate, toast]);
+    fetchNextAppointment();
+  }, [selectedDoctor, selectedDispensary, selectedDate]);
   
   const handleBooking = async () => {
-    if (!selectedDoctor || !selectedDispensary || !selectedDate || !selectedSlot || !name || !phone || !selectedAppointmentNumber) {
+    if (!selectedDoctor || !selectedDispensary || !selectedDate || !name || !phone || !nextAppointment) {
       toast({
         title: 'Missing information',
         description: 'Please fill in all required fields',
@@ -172,31 +173,24 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
     try {
       setIsLoading(true);
       
-      // In a real system, you would check if the patient already exists
-      // and either use their ID or create a new patient
-      
-      // For this demo, assume we create a booking directly
+      // Create booking
       await BookingService.createBooking({
-        patientId: `temp-${phone}`, // In a real system, this would be a real patient ID
+        patientName: name,
+        patientPhone: phone,
+        patientEmail: email || undefined,
+        symptoms: symptoms || undefined,
         doctorId: selectedDoctor,
         dispensaryId: selectedDispensary,
         bookingDate: selectedDate,
-        timeSlot: selectedSlot,
-        appointmentNumber: selectedAppointmentNumber,
-        estimatedTime: selectedEstimatedTime || '',
-        status: BookingStatus.SCHEDULED,
-        symptoms: symptoms,
       });
       
       toast({
         title: 'Booking Confirmed!',
-        description: `Your appointment #${selectedAppointmentNumber} has been booked for ${format(selectedDate, 'PPP')} at approximately ${selectedEstimatedTime}`,
+        description: `Your appointment #${nextAppointment.appointmentNumber} has been booked for ${format(selectedDate, 'PPP')} at ${nextAppointment.estimatedTime}`,
       });
       
       // Reset the form
-      setSelectedSlot('');
-      setSelectedAppointmentNumber(null);
-      setSelectedEstimatedTime(null);
+      setNextAppointment(null);
       setName('');
       setPhone('');
       setEmail('');
@@ -213,12 +207,6 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
     } finally {
       setIsLoading(false);
     }
-  };
-  
-  const handleSlotSelection = (slot: AvailableTimeSlot) => {
-    setSelectedSlot(slot.timeSlot);
-    setSelectedAppointmentNumber(slot.appointmentNumber);
-    setSelectedEstimatedTime(slot.estimatedTime);
   };
   
   // Render the appropriate step
@@ -287,55 +275,43 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
             
             {selectedDoctor && selectedDispensary && selectedDate && (
               <div className="space-y-4 mt-6">
-                <Label>Select Appointment Time</Label>
+                <Label>Available Appointment</Label>
                 
                 {isLoading ? (
-                  <div className="text-center py-8">Loading available appointments...</div>
-                ) : availableSlots.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    No available appointments for the selected date
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {availableSlots.map((slot) => (
-                      <Card 
-                        key={slot.appointmentNumber}
-                        className={`cursor-pointer transition-all ${
-                          selectedSlot === slot.timeSlot
-                            ? 'ring-2 ring-primary border-primary'
-                            : 'hover:border-gray-300'
-                        }`}
-                        onClick={() => handleSlotSelection(slot)}
-                      >
-                        <CardContent className="p-4 flex flex-col">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center text-gray-600">
-                              <Clock className="h-4 w-4 mr-1" />
-                              <span>{slot.estimatedTime}</span>
-                            </div>
-                            <span className="text-sm font-medium bg-gray-100 px-2 py-1 rounded">
-                              {slot.minutesPerPatient} mins
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <User className="h-4 w-4 mr-1" />
-                              <span className="font-medium">Appointment #{slot.appointmentNumber}</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                  <div className="text-center py-8">Loading appointment information...</div>
+                ) : dateError ? (
+                  <Alert variant="destructive" className="my-4">
+                    <AlertTitle>Not Available</AlertTitle>
+                    <AlertDescription>{dateError}</AlertDescription>
+                  </Alert>
+                ) : nextAppointment ? (
+                  <Card className="border-primary">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <User className="h-5 w-5 mr-2 text-primary" />
+                          <span className="font-medium">Appointment #{nextAppointment.appointmentNumber}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-gray-600">
+                          <Clock className="h-4 w-4 mr-1" />
+                          <span>{nextAppointment.estimatedTime}</span>
+                        </div>
+                        <span className="text-sm bg-gray-100 px-2 py-1 rounded">
+                          {nextAppointment.minutesPerPatient} mins
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : null}
               </div>
             )}
             
             <div className="mt-6 flex justify-end">
               <Button
                 onClick={() => setCurrentStep(1)}
-                disabled={!selectedDoctor || !selectedDispensary || !selectedDate || !selectedSlot}
+                disabled={!selectedDoctor || !selectedDispensary || !selectedDate || !nextAppointment}
                 className="bg-medical-600 hover:bg-medical-700"
               >
                 Continue
@@ -347,7 +323,7 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
       case 1:
         return (
           <>
-            {selectedAppointmentNumber && selectedEstimatedTime && (
+            {nextAppointment && (
               <div className="mb-6 p-4 bg-gray-50 rounded-md border border-gray-200">
                 <h3 className="font-medium text-gray-700 mb-2">Appointment Summary</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
@@ -356,12 +332,12 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
                     <p className="font-medium">{format(selectedDate!, 'PPP')}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Estimated Time</p>
-                    <p className="font-medium">{selectedEstimatedTime}</p>
+                    <p className="text-gray-500">Time</p>
+                    <p className="font-medium">{nextAppointment.estimatedTime}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Appointment</p>
-                    <p className="font-medium">#{selectedAppointmentNumber}</p>
+                    <p className="font-medium">#{nextAppointment.appointmentNumber}</p>
                   </div>
                 </div>
               </div>
