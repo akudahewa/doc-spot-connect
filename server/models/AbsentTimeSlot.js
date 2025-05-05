@@ -24,7 +24,16 @@ const absentTimeSlotSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
-  reason: String
+  reason: { 
+    type: String 
+  },
+  isModifiedSession: {
+    type: Boolean,
+    default: false
+  },
+  maxPatients: {
+    type: Number
+  }
 }, { 
   timestamps: {
     createdAt: true,

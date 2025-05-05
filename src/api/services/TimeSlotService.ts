@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import { TimeSlotConfig, AbsentTimeSlot } from '../models';
+import { TimeSlotConfig, AbsentTimeSlot } from '@/api/models';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -19,6 +19,7 @@ export const TimeSlotService = {
         id: slot._id,
         doctorId: slot.doctorId,
         dispensaryId: slot.dispensaryId,
+        minutesPerPatient: slot.minutesPerPatient || 15, // Default to 15 minutes if not specified
         createdAt: new Date(slot.createdAt),
         updatedAt: new Date(slot.updatedAt)
       }));
@@ -42,6 +43,7 @@ export const TimeSlotService = {
         id: slot._id,
         doctorId: typeof slot.doctorId === 'object' ? slot.doctorId._id : slot.doctorId,
         dispensaryId: slot.dispensaryId,
+        minutesPerPatient: slot.minutesPerPatient || 15, // Default to 15 minutes if not specified
         createdAt: new Date(slot.createdAt),
         updatedAt: new Date(slot.updatedAt)
       }));
@@ -130,6 +132,8 @@ export const TimeSlotService = {
         ...slot,
         id: slot._id,
         date: new Date(slot.date),
+        isModifiedSession: slot.isModifiedSession || false,
+        maxPatients: slot.maxPatients || 0,
         createdAt: new Date(slot.createdAt),
         updatedAt: new Date(slot.updatedAt)
       }));
@@ -160,6 +164,8 @@ export const TimeSlotService = {
         ...response.data,
         id: response.data._id,
         date: new Date(response.data.date),
+        isModifiedSession: response.data.isModifiedSession || false,
+        maxPatients: response.data.maxPatients || 0,
         createdAt: new Date(response.data.createdAt),
         updatedAt: new Date(response.data.updatedAt)
       };

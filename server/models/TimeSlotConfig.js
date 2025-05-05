@@ -29,6 +29,11 @@ const timeSlotConfigSchema = new mongoose.Schema({
   maxPatients: { 
     type: Number, 
     required: true 
+  },
+  minutesPerPatient: {
+    type: Number,
+    default: 15,
+    required: true
   }
 }, { 
   timestamps: {

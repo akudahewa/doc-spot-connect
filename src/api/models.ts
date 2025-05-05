@@ -41,6 +41,7 @@ export interface TimeSlotConfig extends BaseModel {
   startTime: string; // Format: "HH:MM" in 24-hour format
   endTime: string; // Format: "HH:MM" in 24-hour format
   maxPatients: number; // Maximum number of patients per slot
+  minutesPerPatient: number; // Minutes allocated per patient
 }
 
 // Absent time slot (when doctor is unavailable)
@@ -51,6 +52,8 @@ export interface AbsentTimeSlot extends BaseModel {
   startTime: string; // Format: "HH:MM" in 24-hour format
   endTime: string; // Format: "HH:MM" in 24-hour format
   reason?: string;
+  isModifiedSession?: boolean; // Flag to indicate if this is a modified session rather than absence
+  maxPatients?: number; // If modified session, can specify different max patients
 }
 
 // Patient model

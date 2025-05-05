@@ -36,6 +36,7 @@ const TimeSlotScheduler = ({ doctorId, dispensaryId }: TimeSlotSchedulerProps) =
   const [startTime, setStartTime] = useState<string>('09:00');
   const [endTime, setEndTime] = useState<string>('17:00');
   const [maxPatients, setMaxPatients] = useState<number>(10);
+  const [minutesPerPatient, setMinutesPerPatient] = useState<number>(15);
   
   const fetchTimeSlots = async () => {
     try {
@@ -66,7 +67,8 @@ const TimeSlotScheduler = ({ doctorId, dispensaryId }: TimeSlotSchedulerProps) =
         dayOfWeek: parseInt(dayOfWeek),
         startTime,
         endTime,
-        maxPatients
+        maxPatients,
+        minutesPerPatient
       });
       
       toast({
@@ -79,6 +81,7 @@ const TimeSlotScheduler = ({ doctorId, dispensaryId }: TimeSlotSchedulerProps) =
       setStartTime('09:00');
       setEndTime('17:00');
       setMaxPatients(10);
+      setMinutesPerPatient(15);
       
       // Refresh time slots
       fetchTimeSlots();
@@ -154,7 +157,7 @@ const TimeSlotScheduler = ({ doctorId, dispensaryId }: TimeSlotSchedulerProps) =
       <div className="grid grid-cols-1 gap-6">
         <Card className="p-4 bg-gray-50">
           <h3 className="text-lg font-medium mb-4">Add New Time Slot</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div>
               <Label htmlFor="dayOfWeek">Day of Week</Label>
               <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
@@ -202,6 +205,17 @@ const TimeSlotScheduler = ({ doctorId, dispensaryId }: TimeSlotSchedulerProps) =
               />
             </div>
             
+            <div>
+              <Label htmlFor="minutesPerPatient">Minutes Per Patient</Label>
+              <Input
+                id="minutesPerPatient"
+                type="number"
+                min="5"
+                value={minutesPerPatient}
+                onChange={(e) => setMinutesPerPatient(parseInt(e.target.value))}
+              />
+            </div>
+            
             <div className="flex items-end">
               <Button onClick={handleAddTimeSlot} className="w-full">
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Slot
@@ -222,7 +236,7 @@ const TimeSlotScheduler = ({ doctorId, dispensaryId }: TimeSlotSchedulerProps) =
           <div className="space-y-4">
             {timeSlots.map((slot) => (
               <Card key={slot.id} className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                   <div>
                     <Label>Day of Week</Label>
                     {editMode === slot.id ? (
@@ -283,6 +297,20 @@ const TimeSlotScheduler = ({ doctorId, dispensaryId }: TimeSlotSchedulerProps) =
                       />
                     ) : (
                       <p className="mt-1">{slot.maxPatients}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label>Minutes Per Patient</Label>
+                    {editMode === slot.id ? (
+                      <Input
+                        type="number"
+                        min="5"
+                        value={slot.minutesPerPatient || 15}
+                        onChange={(e) => handleEditField(slot.id, 'minutesPerPatient', parseInt(e.target.value))}
+                      />
+                    ) : (
+                      <p className="mt-1">{slot.minutesPerPatient || 15}</p>
                     )}
                   </div>
                   
