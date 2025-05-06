@@ -1,7 +1,7 @@
 
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import BookingForm from '@/components/BookingForm';
+import { BookingForm } from '@/components/booking';
 import { useSearchParams } from 'react-router-dom';
 
 const Booking = () => {
