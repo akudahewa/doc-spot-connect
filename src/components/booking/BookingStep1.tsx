@@ -7,9 +7,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Doctor, Dispensary } from '@/api/models';
-import { AvailableTimeSlot } from '@/api/services/TimeSlotService';
-import { User, Clock } from 'lucide-react';
-import { addDays } from 'date-fns';
+import { TimeSlotAvailability, AvailableTimeSlot } from '@/api/services/TimeSlotService';
+import { User, Clock, CalendarX, CalendarClock } from 'lucide-react';
+import { addDays, format } from 'date-fns';
 
 interface BookingStep1Props {
   doctors: Doctor[];
@@ -20,8 +20,7 @@ interface BookingStep1Props {
   setSelectedDoctor: (doctorId: string) => void;
   setSelectedDispensary: (dispensaryId: string) => void;
   setSelectedDate: (date: Date | undefined) => void;
-  nextAppointment: AvailableTimeSlot | null;
-  dateError: string | null;
+  availability: TimeSlotAvailability | null;
   isLoading: boolean;
   onContinue: () => void;
 }
@@ -35,8 +34,7 @@ const BookingStep1: React.FC<BookingStep1Props> = ({
   setSelectedDoctor,
   setSelectedDispensary,
   setSelectedDate,
-  nextAppointment,
-  dateError,
+  availability,
   isLoading,
   onContinue
 }) => {
@@ -106,21 +104,57 @@ const BookingStep1: React.FC<BookingStep1Props> = ({
           
           {isLoading ? (
             <div className="text-center py-8">Loading appointment information...</div>
-          ) : dateError ? (
+          ) : !availability ? (
+            <Alert variant="destructive" className="my-4">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>Failed to load appointment information.</AlertDescription>
+            </Alert>
+          ) : !availability.available ? (
+            <Alert variant={availability.reason === 'absent' ? 'destructive' : 'default'} className="my-4">
+              <AlertTitle>
+                {availability.reason === 'absent' ? (
+                  <div className="flex items-center">
+                    <CalendarX className="h-4 w-4 mr-2" />
+                    Not Available
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <CalendarClock className="h-4 w-4 mr-2" />
+                    No Schedule
+                  </div>
+                )}
+              </AlertTitle>
+              <AlertDescription>{availability.message}</AlertDescription>
+            </Alert>
+          ) : availability.slots && availability.slots.length > 0 ? (
+            <div className="space-y-4">
+              {availability.isModified && (
+                <Alert className="my-4 bg-amber-50 border-amber-200">
+                  <AlertTitle className="text-amber-800 flex items-center">
+                    <CalendarClock className="h-4 w-4 mr-2" />
+                    Modified Schedule
+                  </AlertTitle>
+                  <AlertDescription className="text-amber-700">
+                    The doctor's schedule has been adjusted for this date.
+                    Time: {availability.sessionInfo?.startTime} - {availability.sessionInfo?.endTime}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <AppointmentCard appointment={availability.slots[0]} />
+            </div>
+          ) : (
             <Alert variant="destructive" className="my-4">
               <AlertTitle>Not Available</AlertTitle>
-              <AlertDescription>{dateError}</AlertDescription>
+              <AlertDescription>No appointments available for this date. Please select another date.</AlertDescription>
             </Alert>
-          ) : nextAppointment ? (
-            <AppointmentCard appointment={nextAppointment} />
-          ) : null}
+          )}
         </div>
       )}
       
       <div className="mt-6 flex justify-end">
         <Button
           onClick={onContinue}
-          disabled={!selectedDoctor || !selectedDispensary || !selectedDate || !nextAppointment}
+          disabled={!selectedDoctor || !selectedDispensary || !selectedDate || !availability?.available || !availability.slots?.length}
           className="bg-medical-600 hover:bg-medical-700"
         >
           Continue

@@ -1,7 +1,6 @@
-
 import { Booking, BookingStatus } from '../models';
 import axios from 'axios';
-import { TimeSlotService, AvailableTimeSlot } from './TimeSlotService';
+import { TimeSlotService, AvailableTimeSlot, TimeSlotAvailability } from './TimeSlotService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -86,23 +85,24 @@ export const BookingService = {
     }
   },
 
-  // Get the next available appointment for a doctor at a dispensary on a specific date
+  // Updated method to get the next available appointment
   getNextAvailableAppointment: async (
     doctorId: string,
     dispensaryId: string,
     date: Date
-  ): Promise<AvailableTimeSlot | null> => {
+  ): Promise<TimeSlotAvailability> => {
     try {
-      // Make sure we only use the date part without the time
-      const formattedDate = date.toISOString().split('T')[0];
-      const response = await axios.get(
-        `${API_URL}/bookings/next-available/${doctorId}/${dispensaryId}/${formattedDate}`
-      );
+      // Get all available slots for this date
+      const availability = await TimeSlotService.getAvailableTimeSlots(doctorId, dispensaryId, date);
       
-      return response.data;
+      // Return the availability data, which includes availability status, session info, and slots
+      return availability;
     } catch (error) {
       console.error('Error fetching next available appointment:', error);
-      return null;
+      return {
+        available: false,
+        message: 'Error fetching availability information'
+      };
     }
   },
 
@@ -235,7 +235,7 @@ export const BookingService = {
     doctorId: string,
     dispensaryId: string,
     date: Date
-  ): Promise<AvailableTimeSlot[]> => {
+  ): Promise<TimeSlotAvailability> => {
     try {
       return TimeSlotService.getAvailableTimeSlots(doctorId, dispensaryId, date);
     } catch (error) {

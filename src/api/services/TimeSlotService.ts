@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { TimeSlotConfig, AbsentTimeSlot } from '@/api/models';
 
@@ -9,6 +8,20 @@ export interface AvailableTimeSlot {
   timeSlot: string;
   estimatedTime: string;
   minutesPerPatient: number;
+}
+
+export interface TimeSlotAvailability {
+  available: boolean;
+  isModified?: boolean;
+  reason?: 'absent' | 'no_config';
+  message?: string;
+  sessionInfo?: {
+    startTime: string;
+    endTime: string;
+    minutesPerPatient: number;
+    maxPatients: number;
+  };
+  slots?: AvailableTimeSlot[];
 }
 
 export const TimeSlotService = {
@@ -198,12 +211,12 @@ export const TimeSlotService = {
     }
   },
   
-  // Get available time slots with appointment numbers
+  // Updated method to get available time slots with appointment numbers
   getAvailableTimeSlots: async (
     doctorId: string,
     dispensaryId: string,
     date: Date
-  ): Promise<AvailableTimeSlot[]> => {
+  ): Promise<TimeSlotAvailability> => {
     try {
       const formattedDate = date.toISOString().split('T')[0];
       const response = await axios.get(

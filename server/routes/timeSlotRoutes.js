@@ -156,7 +156,11 @@ router.get('/available/:doctorId/:dispensaryId/:date', async (req, res) => {
     });
     
     if (!timeSlotConfig) {
-      return res.status(200).json([]);
+      return res.status(200).json({
+        available: false,
+        reason: 'no_config',
+        message: 'No regular schedule found for this day'
+      });
     }
     
     // 2. Check if there's a modified/absent session for this specific date
@@ -171,17 +175,24 @@ router.get('/available/:doctorId/:dispensaryId/:date', async (req, res) => {
     
     // Variables to hold session details
     let startTime, endTime, minutesPerPatient, maxPatients;
+    let isModified = false;
     
-    // If completely absent, return no slots
+    // If completely absent, return no slots with reason
     if (absentSlot && !absentSlot.isModifiedSession) {
-      return res.status(200).json([]);
+      return res.status(200).json({
+        available: false,
+        reason: 'absent',
+        message: 'Doctor is not available on this date'
+      });
     } 
     // If modified session, use those parameters
     else if (absentSlot && absentSlot.isModifiedSession) {
       startTime = absentSlot.startTime;
       endTime = absentSlot.endTime;
       maxPatients = absentSlot.maxPatients || timeSlotConfig.maxPatients;
+      // Use original minutes per patient if not specified in the adjustment
       minutesPerPatient = absentSlot.minutesPerPatient || timeSlotConfig.minutesPerPatient;
+      isModified = true;
     } 
     // Otherwise use the regular config
     else {
@@ -258,7 +269,18 @@ router.get('/available/:doctorId/:dispensaryId/:date', async (req, res) => {
       }
     }
     
-    res.status(200).json(availableSlots);
+    // Return availability status, session info, and slots
+    res.status(200).json({
+      available: true,
+      isModified,
+      sessionInfo: {
+        startTime,
+        endTime,
+        minutesPerPatient,
+        maxPatients,
+      },
+      slots: availableSlots
+    });
   } catch (error) {
     console.error('Error getting available time slots:', error);
     res.status(500).json({

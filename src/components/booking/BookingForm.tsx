@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DoctorService, DispensaryService, BookingService } from '@/api/services';
 import { Doctor, Dispensary } from '@/api/models';
-import { AvailableTimeSlot } from '@/api/services/TimeSlotService';
+import { TimeSlotAvailability } from '@/api/services/TimeSlotService';
 import BookingStep1 from './BookingStep1';
 import BookingStep2 from './BookingStep2';
 import { format } from 'date-fns';
@@ -24,7 +23,7 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [selectedDispensary, setSelectedDispensary] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [nextAppointment, setNextAppointment] = useState<AvailableTimeSlot | null>(null);
+  const [availability, setAvailability] = useState<TimeSlotAvailability | null>(null);
   
   // Patient info
   const [name, setName] = useState('');
@@ -35,7 +34,6 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [dateError, setDateError] = useState<string | null>(null);
   
   // Load initial data
   useEffect(() => {
@@ -122,41 +120,39 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
     fetchDispensaryDoctors();
   }, [selectedDispensary, selectedDoctor]);
   
-  // Load next available appointment when doctor, dispensary, and date are selected
+  // Load available appointments when doctor, dispensary, and date are selected
   useEffect(() => {
-    const fetchNextAppointment = async () => {
+    const fetchAvailability = async () => {
       if (!selectedDoctor || !selectedDispensary || !selectedDate) return;
       
       try {
         setIsLoading(true);
-        setDateError(null);
+        setAvailability(null);
         
-        const nextAvailable = await BookingService.getNextAvailableAppointment(
+        const availabilityData = await BookingService.getNextAvailableAppointment(
           selectedDoctor,
           selectedDispensary,
           selectedDate
         );
         
-        if (nextAvailable) {
-          setNextAppointment(nextAvailable);
-        } else {
-          setNextAppointment(null);
-          setDateError('No appointments available for this date. Please select another date.');
-        }
+        setAvailability(availabilityData);
       } catch (error) {
-        console.error('Error loading next available appointment:', error);
-        setNextAppointment(null);
-        setDateError('Failed to load appointment information. The doctor may not be available on this date.');
+        console.error('Error loading appointment availability:', error);
+        setAvailability({
+          available: false,
+          message: 'Failed to load appointment information'
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchNextAppointment();
+    fetchAvailability();
   }, [selectedDoctor, selectedDispensary, selectedDate]);
   
   const handleBooking = async () => {
-    if (!selectedDoctor || !selectedDispensary || !selectedDate || !name || !phone || !nextAppointment) {
+    if (!selectedDoctor || !selectedDispensary || !selectedDate || !name || !phone || 
+        !availability?.available || !availability.slots?.length) {
       toast({
         title: 'Missing information',
         description: 'Please fill in all required fields',
@@ -181,11 +177,11 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
       
       toast({
         title: 'Booking Confirmed!',
-        description: `Your appointment #${nextAppointment.appointmentNumber} has been booked for ${format(selectedDate, 'PPP')} at ${nextAppointment.estimatedTime}`,
+        description: `Your appointment #${availability.slots[0].appointmentNumber} has been booked for ${format(selectedDate, 'PPP')} at ${availability.slots[0].estimatedTime}`,
       });
       
       // Reset the form
-      setNextAppointment(null);
+      setAvailability(null);
       setName('');
       setPhone('');
       setEmail('');
@@ -225,14 +221,13 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
                   setSelectedDoctor={setSelectedDoctor}
                   setSelectedDispensary={setSelectedDispensary}
                   setSelectedDate={setSelectedDate}
-                  nextAppointment={nextAppointment}
-                  dateError={dateError}
+                  availability={availability}
                   isLoading={isLoading}
                   onContinue={() => setCurrentStep(1)}
                 />
               ) : (
                 <BookingStep2
-                  nextAppointment={nextAppointment}
+                  nextAppointment={availability?.slots?.[0] || null}
                   selectedDate={selectedDate}
                   name={name}
                   phone={phone}
