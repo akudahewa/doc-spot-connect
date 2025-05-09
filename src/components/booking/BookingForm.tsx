@@ -129,15 +129,7 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
         setIsLoading(true);
         setAvailability(null);
         
-<<<<<<< HEAD
         const availabilityData = await BookingService.getNextAvailableAppointment(
-=======
-        // Format the date to year-month-date format using date-fns
-        // const formattedDateStr = format(selectedDate, 'yyyy-MM-dd');
-        // console.log("Formatted date:", formattedDateStr);
-        
-        const nextAvailable = await BookingService.getNextAvailableAppointment(
->>>>>>> ecc72b3 (done some date fixes)
           selectedDoctor,
           selectedDispensary,
           selectedDate
