@@ -91,7 +91,7 @@ router.post('/', async (req, res) => {
     // Generate booking date from string - ensure we use the date only
     // Create date with the local timezone, without any time component
     const parsedDate = bookingDate.split('T')[0];
-    const parsedBookingDate = new Date(parsedDate + 'T00:00:00');
+    const parsedBookingDate = new Date(bookingDate);
     
     console.log("Parsed booking date:", parsedBookingDate);
     

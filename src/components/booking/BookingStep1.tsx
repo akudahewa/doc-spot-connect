@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -95,7 +94,19 @@ const BookingStep1: React.FC<BookingStep1Props> = ({
             return date < today || date > addDays(today, 30);
           }}
           className="rounded-md border mx-auto"
+          formatters={{
+            formatCaption: (date) => format(date, 'yyyy-MM-dd'),
+            formatDay: (date) => format(date, 'd'),
+            formatMonthCaption: (date) => format(date, 'yyyy-MM'),
+            formatWeekdayName: (date) => format(date, 'EEE'),
+            formatYearCaption: (date) => format(date, 'yyyy')
+          }}
         />
+        {selectedDate && (
+          <p className="text-sm text-gray-500 text-center">
+            Selected: {format(selectedDate, 'yyyy-MM-dd')}
+          </p>
+        )}
       </div>
       
       {selectedDoctor && selectedDispensary && selectedDate && (

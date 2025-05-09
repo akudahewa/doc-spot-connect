@@ -170,9 +170,21 @@ export const TimeSlotService = {
       const token = localStorage.getItem('auth_token');
       
       // Convert date to ISO string if it's a Date object
+      let absentDate ;
+      if(absentSlot.date instanceof Date){
+        const year = absentSlot.date.getFullYear();
+        const month = String(absentSlot.date.getMonth() + 1).padStart(2, '0');
+        const day = String(absentSlot.date.getDate()).padStart(2, '0');
+        absentDate = `${year}-${month}-${day}`;
+      }else{
+        absentDate = absentSlot.date;
+      }
+      
+      
+
       const slotToSend = {
         ...absentSlot,
-        date: absentSlot.date instanceof Date ? absentSlot.date.toISOString() : absentSlot.date,
+        date: absentDate,
       };
       
       const response = await axios.post(

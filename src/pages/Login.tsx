@@ -25,11 +25,11 @@ const Login = () => {
     const checkServer = async () => {
       try {
         // Try to connect to the API server
-        console.log('Checking API server availability at:', API_URL);
-        const response = await axios.get(API_URL, { timeout: 5000 });
-        console.log('API server response:', response.data);
-        setServerAvailable(true);
-        setServerStatusMessage('Server connected successfully');
+        // console.log('Checking API server availability at:', API_URL);
+        // const response = await axios.get(API_URL, { timeout: 5000 });
+        // console.log('API server response:', response.data);
+        // setServerAvailable(true);
+        // setServerStatusMessage('Server connected successfully');
         
         // Get Auth0 configuration
         try {

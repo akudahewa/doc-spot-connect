@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
@@ -130,7 +129,15 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
         setIsLoading(true);
         setAvailability(null);
         
+<<<<<<< HEAD
         const availabilityData = await BookingService.getNextAvailableAppointment(
+=======
+        // Format the date to year-month-date format using date-fns
+        // const formattedDateStr = format(selectedDate, 'yyyy-MM-dd');
+        // console.log("Formatted date:", formattedDateStr);
+        
+        const nextAvailable = await BookingService.getNextAvailableAppointment(
+>>>>>>> ecc72b3 (done some date fixes)
           selectedDoctor,
           selectedDispensary,
           selectedDate
@@ -164,6 +171,10 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
     
     try {
       setIsLoading(true);
+      
+      // Format the date to year-month-date format using date-fns
+      const formattedDateStr = format(selectedDate, 'yyyy-MM-dd');
+      console.log("Formatted date for booking:", formattedDateStr);
       
       // Create booking
       await BookingService.createBooking({

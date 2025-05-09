@@ -116,34 +116,100 @@ export const BookingService = {
     return newBooking;
   },
 
-  // Update an existing booking
-  updateBooking: async (id: string, updatedBooking: Booking): Promise<Booking | undefined> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const index = mockBookings.findIndex(booking => booking.id === id);
-    if (index !== -1) {
-      mockBookings[index] = { ...updatedBooking, id };
-      return mockBookings[index];
+  // Updated method to get the next available appointment
+  getNextAvailableAppointment: async (
+    doctorId: string,
+    dispensaryId: string,
+    date: Date
+  ): Promise<TimeSlotAvailability> => {
+    try {
+      // Get all available slots for this date
+      const availability = await TimeSlotService.getAvailableTimeSlots(doctorId, dispensaryId, date);
+      // Format date to YYYY-MM-DD format without timezone conversion
+      // const year = date.getFullYear();
+      // const month = String(date.getMonth() + 1).padStart(2, '0');
+      // const day = String(date.getDate()).padStart(2, '0');
+      // const formattedDate = `${year}-${month}-${day}`;
+      
+      // console.log("Original date:", date);
+      // console.log("Formatted date:", formattedDate);
+      
+      // const response = await axios.get(
+      //   `${API_URL}/bookings/next-available/${doctorId}/${dispensaryId}/${formattedDate}`
+      // );
+      
+      // Return the availability data, which includes availability status, session info, and slots
+      return availability;
+    } catch (error) {
+      console.error('Error fetching next available appointment:', error);
+      return {
+        available: false,
+        message: 'Error fetching availability information'
+      };
     }
-    return undefined;
   },
 
-  // Delete a booking
-  deleteBooking: async (id: string): Promise<boolean> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const index = mockBookings.findIndex(booking => booking.id === id);
-    if (index !== -1) {
-      mockBookings.splice(index, 1);
-      return true;
+  // Create a new booking
+  createBooking: async (bookingData: {
+    patientName: string;
+    patientPhone: string;
+    patientEmail?: string;
+    symptoms?: string;
+    doctorId: string;
+    dispensaryId: string;
+    bookingDate: Date;
+  }): Promise<Booking> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      // Format booking date to YYYY-MM-DD format
+      const year = bookingData.bookingDate.getFullYear();
+      const month = String(bookingData.bookingDate.getMonth() + 1).padStart(2, '0');
+      const day = String(bookingData.bookingDate.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+      
+      const bookingToSend = {
+        ...bookingData,
+        bookingDate: formattedDate,
+      };
+      
+      console.log("Sending booking request:", bookingToSend);
+      
+      const response = await axios.post(
+        `${API_URL}/bookings`, 
+        bookingToSend,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        bookingDate: new Date(response.data.bookingDate),
+        isPaid: response.data.isPaid || false,
+        isPatientVisited: response.data.isPatientVisited || false,
+        checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
+        completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      throw new Error('Failed to create booking');
     }
-    return false;
   },
-  
-  // Add this method to the BookingService object
-  getBookingsByDoctorDispensaryDate: async (doctorId: string, dispensaryId: string, date: string) => {
+
+  // Update booking status
+  updateBookingStatus: async (
+    id: string, 
+    status: BookingStatus,
+    additionalInfo?: { 
+      checkedInTime?: Date; 
+      completedTime?: Date; 
+      notes?: string;
+      isPaid?: boolean;
+      isPatientVisited?: boolean;
+    }
+  ): Promise<Booking | null> => {
     try {
       const token = localStorage.getItem('auth_token');
       
