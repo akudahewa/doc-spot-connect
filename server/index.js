@@ -11,6 +11,7 @@ const dispensaryRoutes = require('./routes/dispensaryRoutes');
 const authRoutes = require('./routes/authRoutes');
 const timeSlotRoutes = require('./routes/timeSlotRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 // Create Express app
 const app = express();
@@ -31,6 +32,7 @@ app.use('/api/dispensaries', dispensaryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/timeslots', timeSlotRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Base route
 app.get('/', (req, res) => {

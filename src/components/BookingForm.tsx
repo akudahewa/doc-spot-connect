@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,7 +10,7 @@ import { format, addDays } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { DoctorService, DispensaryService, BookingService } from '@/api/services';
 import { Doctor, Dispensary, BookingStatus } from '@/api/models';
-import { AvailableTimeSlot } from '@/api/services/TimeSlotService';
+import { AvailableTimeSlot, TimeSlotAvailability } from '@/api/services/TimeSlotService';
 import { Clock, Calendar as CalendarIcon, User } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 

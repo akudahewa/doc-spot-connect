@@ -1,4 +1,3 @@
-
 // API Models for Doctor Reservation System
 
 // Base model for common fields
@@ -118,7 +117,7 @@ export interface User extends BaseModel {
 // Report types enum
 export enum ReportType {
   DAILY_BOOKINGS = 'daily_bookings',
-  MONTHLY_SUMMARY = 'monthly_summary',
+  MONTHLY_SUMMARY = 'monthly_summary', 
   DOCTOR_PERFORMANCE = 'doctor_performance',
   DISPENSARY_REVENUE = 'dispensary_revenue'
 }
@@ -133,4 +132,34 @@ export interface Report extends BaseModel {
   startDate: Date;
   endDate: Date;
   data: Record<string, any>; // Structured report data
+}
+
+// Available time slot interface for booking form
+export interface AvailableTimeSlot {
+  date: Date;
+  doctor: any; // Doctor object
+  dispensary: any; // Dispensary object
+  timeSlot: string;
+  appointmentNumber: number;
+  estimatedTime: string;
+}
+
+// Add the SessionInformation interface
+export interface SessionInformation {
+  startTime: string;
+  endTime: string;
+  minutesPerPatient: number;
+  maxPatients: number;
+  isModified?: boolean;
+}
+
+// Add the TimeSlotAvailability interface
+export interface TimeSlotAvailability {
+  available: boolean;
+  message?: string;
+  reason?: string;
+  sessionInfo?: SessionInformation;
+  availableTimeSlots?: string[];
+  availableAppointmentNumbers?: number[];
+  isModified?: boolean;
 }

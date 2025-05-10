@@ -1,76 +1,41 @@
 
+import axios from 'axios';
 import { Report, ReportType } from '../models';
 
-// Mock report data
-const mockReports: Report[] = [
-  {
-    id: '1',
-    type: ReportType.DAILY_BOOKINGS,
-    title: 'Daily Bookings Summary',
-    parameters: { date: '2023-08-10' },
-    generatedBy: '1', // Super Admin
-    startDate: new Date('2023-08-10'),
-    endDate: new Date('2023-08-10'),
-    data: {
-      totalBookings: 25,
-      completedBookings: 18,
-      cancelledBookings: 3,
-      noShowBookings: 4,
-      bookingsByDoctor: [
-        { doctorId: '1', doctorName: 'Dr. Smith', bookings: 10 },
-        { doctorId: '2', doctorName: 'Dr. Johnson', bookings: 15 },
-      ]
-    },
-    createdAt: new Date('2023-08-11'),
-    updatedAt: new Date('2023-08-11')
-  },
-  {
-    id: '2',
-    type: ReportType.MONTHLY_SUMMARY,
-    title: 'Monthly Performance Report',
-    parameters: { month: '07', year: '2023' },
-    generatedBy: '1', // Super Admin
-    dispensaryId: '1', // City Health Clinic
-    startDate: new Date('2023-07-01'),
-    endDate: new Date('2023-07-31'),
-    data: {
-      totalBookings: 320,
-      completedBookings: 280,
-      cancelledBookings: 25,
-      noShowBookings: 15,
-      revenue: 32000,
-      popularDoctors: [
-        { doctorId: '1', doctorName: 'Dr. Smith', bookings: 120 },
-        { doctorId: '3', doctorName: 'Dr. Williams', bookings: 100 }
-      ],
-      bookingsByDay: [
-        { day: '2023-07-01', count: 12 },
-        { day: '2023-07-02', count: 8 },
-        // More days would be here...
-      ]
-    },
-    createdAt: new Date('2023-08-02'),
-    updatedAt: new Date('2023-08-02')
-  },
-];
+// API base URL
+const API_BASE_URL = 'http://localhost:5000/api';
 
 export const ReportService = {
   // Get all reports
   getAllReports: async (): Promise<Report[]> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockReports;
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      const response = await axios.get(`${API_BASE_URL}/reports`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      return [];
+    }
   },
   
   // Get reports by dispensary
   getReportsByDispensary: async (dispensaryId: string): Promise<Report[]> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Filter reports by dispensary
-    return mockReports.filter(report => 
-      !report.dispensaryId || report.dispensaryId === dispensaryId
-    );
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      const response = await axios.get(`${API_BASE_URL}/reports/dispensary/${dispensaryId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching dispensary reports:', error);
+      return [];
+    }
   },
   
   // Generate a new report
@@ -83,107 +48,165 @@ export const ReportService = {
     startDate?: Date,
     endDate?: Date
   ): Promise<Report> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // In a real implementation, this would process data from the database
-    const now = new Date();
-    const reportStartDate = startDate || now;
-    const reportEndDate = endDate || now;
-    
-    // Generate mock report data based on type
-    let reportData: Record<string, any> = {};
-    
-    switch (type) {
-      case ReportType.DAILY_BOOKINGS:
-        reportData = {
-          totalBookings: Math.floor(Math.random() * 50) + 10,
-          completedBookings: Math.floor(Math.random() * 40) + 5,
-          cancelledBookings: Math.floor(Math.random() * 10),
-          noShowBookings: Math.floor(Math.random() * 5),
-          bookingsByDoctor: [
-            { doctorId: '1', doctorName: 'Dr. Smith', bookings: Math.floor(Math.random() * 20) + 5 },
-            { doctorId: '2', doctorName: 'Dr. Johnson', bookings: Math.floor(Math.random() * 15) + 5 },
-          ]
-        };
-        break;
-        
-      case ReportType.MONTHLY_SUMMARY:
-        reportData = {
-          totalBookings: Math.floor(Math.random() * 500) + 100,
-          completedBookings: Math.floor(Math.random() * 400) + 50,
-          cancelledBookings: Math.floor(Math.random() * 50),
-          noShowBookings: Math.floor(Math.random() * 30),
-          revenue: Math.floor(Math.random() * 50000) + 10000,
-          popularDoctors: [
-            { doctorId: '1', doctorName: 'Dr. Smith', bookings: Math.floor(Math.random() * 150) + 50 },
-            { doctorId: '3', doctorName: 'Dr. Williams', bookings: Math.floor(Math.random() * 100) + 50 }
-          ]
-        };
-        break;
-        
-      case ReportType.DOCTOR_PERFORMANCE:
-        reportData = {
-          doctors: [
-            {
-              doctorId: '1',
-              doctorName: 'Dr. Smith',
-              totalPatients: Math.floor(Math.random() * 300) + 100,
-              avgRating: (Math.random() * 2) + 3,
-              completionRate: Math.floor(Math.random() * 30) + 70
-            },
-            {
-              doctorId: '2',
-              doctorName: 'Dr. Johnson',
-              totalPatients: Math.floor(Math.random() * 300) + 100,
-              avgRating: (Math.random() * 2) + 3,
-              completionRate: Math.floor(Math.random() * 30) + 70
-            }
-          ]
-        };
-        break;
-        
-      case ReportType.DISPENSARY_REVENUE:
-        reportData = {
-          totalRevenue: Math.floor(Math.random() * 100000) + 50000,
-          revenueByService: [
-            { service: 'Consultation', revenue: Math.floor(Math.random() * 50000) + 20000 },
-            { service: 'Treatment', revenue: Math.floor(Math.random() * 30000) + 15000 },
-            { service: 'Medication', revenue: Math.floor(Math.random() * 20000) + 10000 }
-          ],
-          revenueByDoctor: [
-            { doctorId: '1', doctorName: 'Dr. Smith', revenue: Math.floor(Math.random() * 25000) + 10000 },
-            { doctorId: '2', doctorName: 'Dr. Johnson', revenue: Math.floor(Math.random() * 20000) + 8000 }
-          ],
-          revenueByMonth: [
-            { month: 'January', revenue: Math.floor(Math.random() * 15000) + 8000 },
-            { month: 'February', revenue: Math.floor(Math.random() * 15000) + 8000 }
-          ]
-        };
-        break;
-        
-      default:
-        reportData = { message: 'No data available for this report type' };
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      let endpoint = '';
+      
+      switch(type) {
+        case ReportType.DAILY_BOOKINGS:
+          endpoint = '/reports/generate/daily-bookings';
+          break;
+        case ReportType.MONTHLY_SUMMARY:
+          endpoint = '/reports/generate/monthly-summary';
+          break;
+        case ReportType.DOCTOR_PERFORMANCE:
+          endpoint = '/reports/generate/doctor-performance';
+          break;
+        case ReportType.DISPENSARY_REVENUE:
+          endpoint = '/reports/generate/dispensary-revenue';
+          break;
+        default:
+          throw new Error('Invalid report type');
+      }
+      
+      const response = await axios.post(
+        `${API_BASE_URL}${endpoint}`,
+        {
+          title,
+          parameters,
+          dispensaryId,
+          startDate: startDate ? startDate.toISOString() : new Date().toISOString(),
+          endDate: endDate ? endDate.toISOString() : new Date().toISOString()
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error generating report:', error);
+      
+      // Fallback to mock data for development purposes
+      console.log('Falling back to mock data');
+      
+      // Generate mock report data based on type
+      const now = new Date();
+      const reportStartDate = startDate || now;
+      const reportEndDate = endDate || now;
+      
+      // Generate mock report data (same as before for fallback)
+      let reportData: Record<string, any> = {};
+      
+      switch (type) {
+        case ReportType.DAILY_BOOKINGS:
+          reportData = {
+            totalBookings: Math.floor(Math.random() * 50) + 10,
+            completedBookings: Math.floor(Math.random() * 40) + 5,
+            cancelledBookings: Math.floor(Math.random() * 10),
+            noShowBookings: Math.floor(Math.random() * 5),
+            bookingsByDoctor: [
+              { doctorId: '1', doctorName: 'Dr. Smith', bookings: Math.floor(Math.random() * 20) + 5 },
+              { doctorId: '2', doctorName: 'Dr. Johnson', bookings: Math.floor(Math.random() * 15) + 5 },
+            ]
+          };
+          break;
+          
+        case ReportType.MONTHLY_SUMMARY:
+          reportData = {
+            totalBookings: Math.floor(Math.random() * 500) + 100,
+            completedBookings: Math.floor(Math.random() * 400) + 50,
+            cancelledBookings: Math.floor(Math.random() * 50),
+            noShowBookings: Math.floor(Math.random() * 30),
+            revenue: Math.floor(Math.random() * 50000) + 10000,
+            popularDoctors: [
+              { doctorId: '1', doctorName: 'Dr. Smith', bookings: Math.floor(Math.random() * 150) + 50 },
+              { doctorId: '3', doctorName: 'Dr. Williams', bookings: Math.floor(Math.random() * 100) + 50 }
+            ]
+          };
+          break;
+          
+        case ReportType.DOCTOR_PERFORMANCE:
+          reportData = {
+            doctors: [
+              {
+                doctorId: '1',
+                doctorName: 'Dr. Smith',
+                totalPatients: Math.floor(Math.random() * 300) + 100,
+                avgRating: (Math.random() * 2) + 3,
+                completionRate: Math.floor(Math.random() * 30) + 70
+              },
+              {
+                doctorId: '2',
+                doctorName: 'Dr. Johnson',
+                totalPatients: Math.floor(Math.random() * 300) + 100,
+                avgRating: (Math.random() * 2) + 3,
+                completionRate: Math.floor(Math.random() * 30) + 70
+              }
+            ]
+          };
+          break;
+          
+        case ReportType.DISPENSARY_REVENUE:
+          reportData = {
+            totalRevenue: Math.floor(Math.random() * 100000) + 50000,
+            revenueByService: [
+              { service: 'Consultation', revenue: Math.floor(Math.random() * 50000) + 20000 },
+              { service: 'Treatment', revenue: Math.floor(Math.random() * 30000) + 15000 },
+              { service: 'Medication', revenue: Math.floor(Math.random() * 20000) + 10000 }
+            ],
+            revenueByDoctor: [
+              { doctorId: '1', doctorName: 'Dr. Smith', revenue: Math.floor(Math.random() * 25000) + 10000 },
+              { doctorId: '2', doctorName: 'Dr. Johnson', revenue: Math.floor(Math.random() * 20000) + 8000 }
+            ],
+            revenueByMonth: [
+              { month: 'January', revenue: Math.floor(Math.random() * 15000) + 8000 },
+              { month: 'February', revenue: Math.floor(Math.random() * 15000) + 8000 }
+            ]
+          };
+          break;
+          
+        default:
+          reportData = { message: 'No data available for this report type' };
+      }
+      
+      // Create mock report object
+      const mockReport: Report = {
+        id: Math.random().toString(36).substring(2, 11),
+        type,
+        title,
+        parameters,
+        generatedBy,
+        dispensaryId,
+        startDate: reportStartDate,
+        endDate: reportEndDate,
+        data: reportData,
+        createdAt: now,
+        updatedAt: now
+      };
+      
+      return mockReport;
     }
-    
-    // Create new report
-    const newReport: Report = {
-      id: Math.random().toString(36).substring(2, 11),
-      type,
-      title,
-      parameters,
-      generatedBy,
-      dispensaryId,
-      startDate: reportStartDate,
-      endDate: reportEndDate,
-      data: reportData,
-      createdAt: now,
-      updatedAt: now
-    };
-    
-    // In a real implementation, this would save the report to the database
-    mockReports.push(newReport);
-    
-    return newReport;
+  },
+
+  // Get session report (bookings for a specific doctor, dispensary, and date)
+  getSessionReport: async (doctorId: string, dispensaryId: string, date: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      const response = await axios.get(
+        `${API_BASE_URL}/reports/session/${doctorId}/${dispensaryId}/${date}`, 
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching session report:', error);
+      // Return empty array for now
+      return [];
+    }
   }
 };

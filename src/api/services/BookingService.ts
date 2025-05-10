@@ -1,315 +1,170 @@
-
 import axios from 'axios';
-import { Booking, BookingStatus } from '@/api/models';
-import { TimeSlotAvailability } from './TimeSlotService';
+import { Booking } from '../models';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Mock booking data (replace with actual API calls later)
+const mockBookings: Booking[] = [
+  {
+    id: '1',
+    patientId: '101',
+    doctorId: '1',
+    dispensaryId: '1',
+    bookingDate: new Date('2023-08-15T10:00:00'),
+    timeSlot: '10:00-10:15',
+    appointmentNumber: 1,
+    estimatedTime: '10:00',
+    status: 'scheduled',
+    notes: 'Patient has a cough',
+    symptoms: 'Cough, fever',
+    isPaid: true,
+    isPatientVisited: false,
+    patientName: 'John Doe',
+    patientPhone: '123-456-7890',
+    patientEmail: 'john.doe@example.com',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '2',
+    patientId: '102',
+    doctorId: '2',
+    dispensaryId: '2',
+    bookingDate: new Date('2023-08-16T14:30:00'),
+    timeSlot: '14:30-14:45',
+    appointmentNumber: 2,
+    estimatedTime: '14:30',
+    status: 'completed',
+    notes: 'Follow-up appointment',
+    symptoms: 'None',
+    isPaid: true,
+    isPatientVisited: true,
+    checkedInTime: new Date('2023-08-16T14:25:00'),
+    completedTime: new Date('2023-08-16T14:40:00'),
+    patientName: 'Jane Smith',
+    patientPhone: '987-654-3210',
+    patientEmail: 'jane.smith@example.com',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '3',
+    patientId: '103',
+    doctorId: '1',
+    dispensaryId: '1',
+    bookingDate: new Date('2023-08-15T11:00:00'),
+    timeSlot: '11:00-11:15',
+    appointmentNumber: 2,
+    estimatedTime: '11:00',
+    status: 'cancelled',
+    notes: 'Patient cancelled',
+    symptoms: 'N/A',
+    isPaid: false,
+    isPatientVisited: false,
+    patientName: 'Alice Johnson',
+    patientPhone: '555-123-4567',
+    patientEmail: 'alice.johnson@example.com',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '4',
+    patientId: '104',
+    doctorId: '2',
+    dispensaryId: '2',
+    bookingDate: new Date('2023-08-16T09:00:00'),
+    timeSlot: '09:00-09:15',
+    appointmentNumber: 1,
+    estimatedTime: '09:00',
+    status: 'no_show',
+    notes: 'Patient did not show up',
+    symptoms: 'N/A',
+    isPaid: false,
+    isPatientVisited: false,
+    patientName: 'Bob Williams',
+    patientPhone: '111-222-3333',
+    patientEmail: 'bob.williams@example.com',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+];
 
-export interface BookingCreateParams {
-  doctorId: string;
-  dispensaryId: string;
-  bookingDate: Date;
-  patientName: string;
-  patientPhone: string;
-  patientEmail?: string;
-  symptoms?: string;
-}
+// API base URL
+const API_BASE_URL = 'http://localhost:5000/api';
 
 export const BookingService = {
   // Get all bookings
   getAllBookings: async (): Promise<Booking[]> => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(
-        `${API_URL}/bookings`, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      return response.data.map((booking: any) => ({
-        id: booking._id,
-        doctorId: booking.doctorId,
-        dispensaryId: booking.dispensaryId,
-        patientId: booking.patientId,
-        patientName: booking.patientName,
-        patientPhone: booking.patientPhone,
-        patientEmail: booking.patientEmail,
-        timeSlot: booking.timeSlot,
-        appointmentNumber: booking.appointmentNumber,
-        estimatedTime: booking.estimatedTime,
-        status: booking.status,
-        bookingDate: new Date(booking.bookingDate),
-        symptoms: booking.symptoms,
-        isPaid: booking.isPaid,
-        isPatientVisited: booking.isPatientVisited,
-        checkedInTime: booking.checkedInTime ? new Date(booking.checkedInTime) : undefined,
-        completedTime: booking.completedTime ? new Date(booking.completedTime) : undefined,
-        notes: booking.notes,
-        createdAt: new Date(booking.createdAt),
-        updatedAt: new Date(booking.updatedAt)
-      }));
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
-      throw new Error('Failed to fetch bookings');
-    }
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return mockBookings;
   },
 
-  // Get a specific booking
-  getBooking: async (id: string): Promise<Booking> => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(
-        `${API_URL}/bookings/${id}`, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      const booking = response.data;
-      return {
-        id: booking._id,
-        doctorId: booking.doctorId,
-        dispensaryId: booking.dispensaryId,
-        patientId: booking.patientId,
-        patientName: booking.patientName,
-        patientPhone: booking.patientPhone,
-        patientEmail: booking.patientEmail,
-        timeSlot: booking.timeSlot,
-        appointmentNumber: booking.appointmentNumber,
-        estimatedTime: booking.estimatedTime,
-        status: booking.status,
-        bookingDate: new Date(booking.bookingDate),
-        symptoms: booking.symptoms,
-        isPaid: booking.isPaid,
-        isPatientVisited: booking.isPatientVisited,
-        checkedInTime: booking.checkedInTime ? new Date(booking.checkedInTime) : undefined,
-        completedTime: booking.completedTime ? new Date(booking.completedTime) : undefined,
-        notes: booking.notes,
-        createdAt: new Date(booking.createdAt),
-        updatedAt: new Date(booking.updatedAt)
-      };
-    } catch (error) {
-      console.error('Error fetching booking:', error);
-      throw new Error('Failed to fetch booking');
-    }
-  },
-
-  // Get booking by patient ID
-  getPatientBookings: async (patientId: string): Promise<Booking[]> => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.get(
-        `${API_URL}/bookings/patient/${patientId}`, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      return response.data.map((booking: any) => ({
-        id: booking._id,
-        doctorId: booking.doctorId,
-        dispensaryId: booking.dispensaryId,
-        patientId: booking.patientId,
-        patientName: booking.patientName,
-        patientPhone: booking.patientPhone,
-        patientEmail: booking.patientEmail,
-        timeSlot: booking.timeSlot,
-        appointmentNumber: booking.appointmentNumber,
-        estimatedTime: booking.estimatedTime,
-        status: booking.status,
-        bookingDate: new Date(booking.bookingDate),
-        symptoms: booking.symptoms,
-        isPaid: booking.isPaid,
-        isPatientVisited: booking.isPatientVisited,
-        checkedInTime: booking.checkedInTime ? new Date(booking.checkedInTime) : undefined,
-        completedTime: booking.completedTime ? new Date(booking.completedTime) : undefined,
-        notes: booking.notes,
-        createdAt: new Date(booking.createdAt),
-        updatedAt: new Date(booking.updatedAt)
-      }));
-    } catch (error) {
-      console.error('Error fetching patient bookings:', error);
-      throw new Error('Failed to fetch patient bookings');
-    }
+  // Get booking by ID
+  getBookingById: async (id: string): Promise<Booking | undefined> => {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return mockBookings.find(booking => booking.id === id);
   },
 
   // Create a new booking
-  createBooking: async (booking: BookingCreateParams): Promise<Booking> => {
-    try {
-      const response = await axios.post(`${API_URL}/bookings`, booking);
-      const createdBooking = response.data;
-      
-      return {
-        id: createdBooking._id,
-        doctorId: createdBooking.doctorId,
-        dispensaryId: createdBooking.dispensaryId,
-        patientId: createdBooking.patientId,
-        patientName: createdBooking.patientName,
-        patientPhone: createdBooking.patientPhone,
-        patientEmail: createdBooking.patientEmail,
-        timeSlot: createdBooking.timeSlot,
-        appointmentNumber: createdBooking.appointmentNumber,
-        estimatedTime: createdBooking.estimatedTime,
-        status: createdBooking.status,
-        bookingDate: new Date(createdBooking.bookingDate),
-        symptoms: createdBooking.symptoms,
-        isPaid: createdBooking.isPaid,
-        isPatientVisited: createdBooking.isPatientVisited,
-        checkedInTime: createdBooking.checkedInTime ? new Date(createdBooking.checkedInTime) : undefined,
-        completedTime: createdBooking.completedTime ? new Date(createdBooking.completedTime) : undefined,
-        notes: createdBooking.notes,
-        createdAt: new Date(createdBooking.createdAt),
-        updatedAt: new Date(createdBooking.updatedAt)
-      };
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      throw new Error('Failed to create booking');
-    }
+  createBooking: async (booking: Booking): Promise<Booking> => {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Assign a new ID (in a real implementation, this would be handled by the database)
+    const newBooking: Booking = { ...booking, id: Math.random().toString(36).substring(2, 15) };
+    mockBookings.push(newBooking);
+    return newBooking;
   },
 
-  // Update a booking status
-  updateBookingStatus: async (
-    id: string, 
-    status: BookingStatus, 
-    additionalData?: {
-      checkedInTime?: Date,
-      completedTime?: Date,
-      notes?: string,
-      isPaid?: boolean,
-      isPatientVisited?: boolean
-    }
-  ): Promise<Booking> => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.patch(
-        `${API_URL}/bookings/${id}/status`, 
-        { status, ...additionalData },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+  // Update an existing booking
+  updateBooking: async (id: string, updatedBooking: Booking): Promise<Booking | undefined> => {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const updatedBooking = response.data;
-      return {
-        id: updatedBooking._id,
-        doctorId: updatedBooking.doctorId,
-        dispensaryId: updatedBooking.dispensaryId,
-        patientId: updatedBooking.patientId,
-        patientName: updatedBooking.patientName,
-        patientPhone: updatedBooking.patientPhone,
-        patientEmail: updatedBooking.patientEmail,
-        timeSlot: updatedBooking.timeSlot,
-        appointmentNumber: updatedBooking.appointmentNumber,
-        estimatedTime: updatedBooking.estimatedTime,
-        status: updatedBooking.status,
-        bookingDate: new Date(updatedBooking.bookingDate),
-        symptoms: updatedBooking.symptoms,
-        isPaid: updatedBooking.isPaid,
-        isPatientVisited: updatedBooking.isPatientVisited,
-        checkedInTime: updatedBooking.checkedInTime ? new Date(updatedBooking.checkedInTime) : undefined,
-        completedTime: updatedBooking.completedTime ? new Date(updatedBooking.completedTime) : undefined,
-        notes: updatedBooking.notes,
-        createdAt: new Date(updatedBooking.createdAt),
-        updatedAt: new Date(updatedBooking.updatedAt)
-      };
-    } catch (error) {
-      console.error('Error updating booking status:', error);
-      throw new Error('Failed to update booking status');
+    const index = mockBookings.findIndex(booking => booking.id === id);
+    if (index !== -1) {
+      mockBookings[index] = { ...updatedBooking, id };
+      return mockBookings[index];
     }
+    return undefined;
   },
 
-  // Cancel a booking
-  cancelBooking: async (id: string, reason?: string): Promise<Booking> => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await axios.patch(
-        `${API_URL}/bookings/${id}/cancel`, 
-        { reason },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+  // Delete a booking
+  deleteBooking: async (id: string): Promise<boolean> => {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-      const cancelledBooking = response.data;
-      return {
-        id: cancelledBooking._id,
-        doctorId: cancelledBooking.doctorId,
-        dispensaryId: cancelledBooking.dispensaryId,
-        patientId: cancelledBooking.patientId,
-        patientName: cancelledBooking.patientName,
-        patientPhone: cancelledBooking.patientPhone,
-        patientEmail: cancelledBooking.patientEmail,
-        timeSlot: cancelledBooking.timeSlot,
-        appointmentNumber: cancelledBooking.appointmentNumber,
-        estimatedTime: cancelledBooking.estimatedTime,
-        status: cancelledBooking.status,
-        bookingDate: new Date(cancelledBooking.bookingDate),
-        symptoms: cancelledBooking.symptoms,
-        isPaid: cancelledBooking.isPaid,
-        isPatientVisited: cancelledBooking.isPatientVisited,
-        checkedInTime: cancelledBooking.checkedInTime ? new Date(cancelledBooking.checkedInTime) : undefined,
-        completedTime: cancelledBooking.completedTime ? new Date(cancelledBooking.completedTime) : undefined,
-        notes: cancelledBooking.notes,
-        createdAt: new Date(cancelledBooking.createdAt),
-        updatedAt: new Date(cancelledBooking.updatedAt)
-      };
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-      throw new Error('Failed to cancel booking');
+    const index = mockBookings.findIndex(booking => booking.id === id);
+    if (index !== -1) {
+      mockBookings.splice(index, 1);
+      return true;
     }
-  },
-
-  // Get next available appointment
-  getNextAvailableAppointment: async (
-    doctorId: string,
-    dispensaryId: string,
-    date: Date
-  ): Promise<TimeSlotAvailability> => {
-    try {
-      // Format the date to ISO format for the API
-      const formattedDate = date.toISOString().split('T')[0];
-      const response = await axios.get(
-        `${API_URL}/timeslots/available/${doctorId}/${dispensaryId}/${formattedDate}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error getting next available appointment:', error);
-      return {
-        available: false,
-        message: 'Error fetching availability information'
-      };
-    }
+    return false;
   },
   
-  // Get bookings for a specific doctor, dispensary and date
-  getBookingsByDoctorDispensaryDate: async (
-    doctorId: string,
-    dispensaryId: string,
-    date: string
-  ): Promise<Booking[]> => {
+  // Add this method to the BookingService object
+  getBookingsByDoctorDispensaryDate: async (doctorId: string, dispensaryId: string, date: string) => {
     try {
       const token = localStorage.getItem('auth_token');
+      
+      // Try to use the reports API endpoint for this
       const response = await axios.get(
-        `${API_URL}/bookings/doctor/${doctorId}/dispensary/${dispensaryId}/date/${date}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        `${API_BASE_URL}/reports/session/${doctorId}/${dispensaryId}/${date}`, 
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
       );
-
-      return response.data.map((booking: any) => ({
-        id: booking._id,
-        doctorId: booking.doctorId,
-        dispensaryId: booking.dispensaryId,
-        patientId: booking.patientId,
-        patientName: booking.patientName,
-        patientPhone: booking.patientPhone,
-        patientEmail: booking.patientEmail,
-        timeSlot: booking.timeSlot,
-        appointmentNumber: booking.appointmentNumber,
-        estimatedTime: booking.estimatedTime,
-        status: booking.status,
-        bookingDate: new Date(booking.bookingDate),
-        symptoms: booking.symptoms,
-        isPaid: booking.isPaid,
-        isPatientVisited: booking.isPatientVisited,
-        checkedInTime: booking.checkedInTime ? new Date(booking.checkedInTime) : undefined,
-        completedTime: booking.completedTime ? new Date(booking.completedTime) : undefined,
-        notes: booking.notes,
-        createdAt: new Date(booking.createdAt),
-        updatedAt: new Date(booking.updatedAt)
-      }));
+      
+      return response.data;
     } catch (error) {
-      console.error('Error fetching bookings by date:', error);
-      throw new Error('Failed to fetch bookings by date');
+      console.error('Error fetching bookings for session:', error);
+      
+      // For development - mock data
+      return mockBookings.filter(booking => 
+        booking.doctorId === doctorId && 
+        booking.dispensaryId === dispensaryId && 
+        new Date(booking.bookingDate).toDateString() === new Date(date).toDateString()
+      );
     }
   }
 };
