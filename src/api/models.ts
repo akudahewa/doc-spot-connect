@@ -92,6 +92,9 @@ export interface Booking extends BaseModel {
   isPatientVisited: boolean;
   checkedInTime?: Date;
   completedTime?: Date;
+  patientName: string;
+  patientPhone: string;
+  patientEmail?: string;
 }
 
 // User role enum

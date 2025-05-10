@@ -18,10 +18,11 @@ import { DoctorService, DispensaryService, TimeSlotService, BookingService } fro
 import { Doctor, Dispensary, Booking } from '@/api/models';
 import { TimeSlotAvailability } from '@/api/services/TimeSlotService';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Printer, Download } from 'lucide-react';
 
 const ReportDetailGenerator = () => {
   const { toast } = useToast();
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedDoctor, setSelectedDoctor] = useState<string>('');
   const [selectedDispensary, setSelectedDispensary] = useState<string>('');
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -193,6 +194,18 @@ const ReportDetailGenerator = () => {
       setLoading(false);
     }
   };
+  
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExport = () => {
+    toast({
+      title: "Export initiated",
+      description: "Your report is being prepared for download."
+    });
+    // In a real implementation, this would generate a CSV or Excel file
+  };
 
   // Find doctor and dispensary names
   const getDoctorName = () => {
@@ -216,6 +229,47 @@ const ReportDetailGenerator = () => {
         <span className="font-medium">Session Time: </span> 
         {startTime} - {endTime}
         {isModified && <span className="ml-2 text-orange-500">(Modified Schedule)</span>}
+      </div>
+    );
+  };
+
+  // Calculate session statistics
+  const getSessionStatistics = () => {
+    if (!bookings || bookings.length === 0) return null;
+    
+    const total = bookings.length;
+    const completed = bookings.filter(b => b.status === 'completed').length;
+    const checkedIn = bookings.filter(b => b.status === 'checked_in').length;
+    const cancelled = bookings.filter(b => b.status === 'cancelled').length;
+    const noShow = bookings.filter(b => b.status === 'no_show').length;
+    const scheduled = bookings.filter(b => b.status === 'scheduled').length;
+    
+    return (
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mb-6">
+        <div className="bg-gray-50 p-3 rounded-md text-center">
+          <div className="text-sm text-gray-500">Total</div>
+          <div className="text-xl font-bold">{total}</div>
+        </div>
+        <div className="bg-blue-50 p-3 rounded-md text-center">
+          <div className="text-sm text-blue-500">Scheduled</div>
+          <div className="text-xl font-bold text-blue-600">{scheduled}</div>
+        </div>
+        <div className="bg-amber-50 p-3 rounded-md text-center">
+          <div className="text-sm text-amber-500">Checked In</div>
+          <div className="text-xl font-bold text-amber-600">{checkedIn}</div>
+        </div>
+        <div className="bg-green-50 p-3 rounded-md text-center">
+          <div className="text-sm text-green-500">Completed</div>
+          <div className="text-xl font-bold text-green-600">{completed}</div>
+        </div>
+        <div className="bg-red-50 p-3 rounded-md text-center">
+          <div className="text-sm text-red-500">Cancelled</div>
+          <div className="text-xl font-bold text-red-600">{cancelled}</div>
+        </div>
+        <div className="bg-gray-100 p-3 rounded-md text-center">
+          <div className="text-sm text-gray-500">No Show</div>
+          <div className="text-xl font-bold text-gray-600">{noShow}</div>
+        </div>
       </div>
     );
   };
@@ -326,9 +380,24 @@ const ReportDetailGenerator = () => {
 
         {isReportGenerated && (
           <div className="mt-6">
-            <h3 className="text-lg font-medium mb-4">
-              Session Report: {getDoctorName()} at {getDispensaryName()} on {selectedDate ? format(selectedDate, 'PPP') : ''}
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">
+                Session Report: {getDoctorName()} at {getDispensaryName()} on {selectedDate ? format(selectedDate, 'PPP') : ''}
+              </h3>
+              
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={handlePrint}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleExport}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </div>
+            </div>
+            
+            {getSessionStatistics()}
             
             {bookings.length === 0 ? (
               <div className="p-4 text-center text-gray-500">
