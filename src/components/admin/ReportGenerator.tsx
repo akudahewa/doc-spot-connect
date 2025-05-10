@@ -16,14 +16,13 @@ import {
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { format, addDays } from 'date-fns';
-import { ChevronDownIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import ReportDetailGenerator from './ReportDetailGenerator';
 
 const ReportGenerator = () => {
   const { toast } = useToast();
   const [reportType, setReportType] = useState<ReportType | ''>('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(addDays(new Date(), 7));
   
@@ -97,16 +96,17 @@ const ReportGenerator = () => {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="generate" className="w-full">
-        <TabsList className="grid grid-cols-2">
-          <TabsTrigger value="generate">Generate Report</TabsTrigger>
+      <Tabs defaultValue="summary" className="w-full">
+        <TabsList className="grid grid-cols-3">
+          <TabsTrigger value="summary">Summary Reports</TabsTrigger>
+          <TabsTrigger value="session">Session Reports</TabsTrigger>
           <TabsTrigger value="history">Report History</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="generate" className="space-y-6 mt-4">
+        <TabsContent value="summary" className="space-y-6 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Generate New Report</CardTitle>
+              <CardTitle>Generate Summary Report</CardTitle>
               <CardDescription>
                 Select parameters to generate a customized report
               </CardDescription>
@@ -115,7 +115,7 @@ const ReportGenerator = () => {
               <div className="space-y-2">
                 <Label htmlFor="reportType">Report Type</Label>
                 <Select value={reportType} onValueChange={(value) => handleReportTypeChange(value as ReportType)}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" id="reportType">
                     <SelectValue placeholder="Select report type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -187,6 +187,10 @@ const ReportGenerator = () => {
               </Button>
             </CardFooter>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="session" className="mt-4">
+          <ReportDetailGenerator />
         </TabsContent>
         
         <TabsContent value="history" className="mt-4">
