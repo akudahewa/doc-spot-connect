@@ -230,7 +230,15 @@ export const TimeSlotService = {
     date: Date
   ): Promise<TimeSlotAvailability> => {
     try {
-      const formattedDate = date.toISOString().split('T')[0];
+      console.log(date);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+      
+      console.log("Original date:", date);
+      console.log("Formatted date:", formattedDate);
+      // const formattedDate = date.toISOString().split('T')[0];
       const response = await axios.get(
         `${API_URL}/timeslots/available/${doctorId}/${dispensaryId}/${formattedDate}`
       );
