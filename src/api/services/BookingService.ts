@@ -1,119 +1,88 @@
+import { Booking, BookingStatus } from '../models';
 import axios from 'axios';
-import { Booking } from '../models';
+import { TimeSlotService, AvailableTimeSlot, TimeSlotAvailability } from './TimeSlotService';
 
-// Mock booking data (replace with actual API calls later)
-const mockBookings: Booking[] = [
-  {
-    id: '1',
-    patientId: '101',
-    doctorId: '1',
-    dispensaryId: '1',
-    bookingDate: new Date('2023-08-15T10:00:00'),
-    timeSlot: '10:00-10:15',
-    appointmentNumber: 1,
-    estimatedTime: '10:00',
-    status: 'scheduled',
-    notes: 'Patient has a cough',
-    symptoms: 'Cough, fever',
-    isPaid: true,
-    isPatientVisited: false,
-    patientName: 'John Doe',
-    patientPhone: '123-456-7890',
-    patientEmail: 'john.doe@example.com',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: '2',
-    patientId: '102',
-    doctorId: '2',
-    dispensaryId: '2',
-    bookingDate: new Date('2023-08-16T14:30:00'),
-    timeSlot: '14:30-14:45',
-    appointmentNumber: 2,
-    estimatedTime: '14:30',
-    status: 'completed',
-    notes: 'Follow-up appointment',
-    symptoms: 'None',
-    isPaid: true,
-    isPatientVisited: true,
-    checkedInTime: new Date('2023-08-16T14:25:00'),
-    completedTime: new Date('2023-08-16T14:40:00'),
-    patientName: 'Jane Smith',
-    patientPhone: '987-654-3210',
-    patientEmail: 'jane.smith@example.com',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: '3',
-    patientId: '103',
-    doctorId: '1',
-    dispensaryId: '1',
-    bookingDate: new Date('2023-08-15T11:00:00'),
-    timeSlot: '11:00-11:15',
-    appointmentNumber: 2,
-    estimatedTime: '11:00',
-    status: 'cancelled',
-    notes: 'Patient cancelled',
-    symptoms: 'N/A',
-    isPaid: false,
-    isPatientVisited: false,
-    patientName: 'Alice Johnson',
-    patientPhone: '555-123-4567',
-    patientEmail: 'alice.johnson@example.com',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-  {
-    id: '4',
-    patientId: '104',
-    doctorId: '2',
-    dispensaryId: '2',
-    bookingDate: new Date('2023-08-16T09:00:00'),
-    timeSlot: '09:00-09:15',
-    appointmentNumber: 1,
-    estimatedTime: '09:00',
-    status: 'no_show',
-    notes: 'Patient did not show up',
-    symptoms: 'N/A',
-    isPaid: false,
-    isPatientVisited: false,
-    patientName: 'Bob Williams',
-    patientPhone: '111-222-3333',
-    patientEmail: 'bob.williams@example.com',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  },
-];
-
-// API base URL
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const BookingService = {
-  // Get all bookings
-  getAllBookings: async (): Promise<Booking[]> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockBookings;
+  // Get all bookings for a specific date, doctor, and dispensary
+  getBookings: async (
+    doctorId: string,
+    dispensaryId: string,
+    date: Date
+  ): Promise<Booking[]> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const formattedDate = date.toISOString().split('T')[0];
+      
+      const response = await axios.get(
+        `${API_URL}/bookings/doctor/${doctorId}/dispensary/${dispensaryId}/date/${formattedDate}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return response.data.map((booking: any) => ({
+        ...booking,
+        id: booking._id,
+        bookingDate: new Date(booking.bookingDate),
+        checkedInTime: booking.checkedInTime ? new Date(booking.checkedInTime) : undefined,
+        completedTime: booking.completedTime ? new Date(booking.completedTime) : undefined,
+        createdAt: new Date(booking.createdAt),
+        updatedAt: new Date(booking.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      throw new Error('Failed to fetch bookings');
+    }
   },
 
-  // Get booking by ID
-  getBookingById: async (id: string): Promise<Booking | undefined> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockBookings.find(booking => booking.id === id);
+  // Get a booking by ID
+  getBookingById: async (id: string): Promise<Booking | null> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/bookings/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (!response.data) return null;
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        bookingDate: new Date(response.data.bookingDate),
+        checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
+        completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error fetching booking by ID:', error);
+      throw new Error('Failed to fetch booking details');
+    }
   },
 
-  // Create a new booking
-  createBooking: async (booking: Booking): Promise<Booking> => {
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Assign a new ID (in a real implementation, this would be handled by the database)
-    const newBooking: Booking = { ...booking, id: Math.random().toString(36).substring(2, 15) };
-    mockBookings.push(newBooking);
-    return newBooking;
+  // Get all bookings for a patient
+  getBookingsByPatient: async (patientId: string): Promise<Booking[]> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/bookings/patient/${patientId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return response.data.map((booking: any) => ({
+        ...booking,
+        id: booking._id,
+        bookingDate: new Date(booking.bookingDate),
+        checkedInTime: booking.checkedInTime ? new Date(booking.checkedInTime) : undefined,
+        completedTime: booking.completedTime ? new Date(booking.completedTime) : undefined,
+        createdAt: new Date(booking.createdAt),
+        updatedAt: new Date(booking.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching patient bookings:', error);
+      throw new Error('Failed to fetch patient bookings');
+    }
   },
 
   // Updated method to get the next available appointment
@@ -213,24 +182,79 @@ export const BookingService = {
     try {
       const token = localStorage.getItem('auth_token');
       
-      // Try to use the reports API endpoint for this
-      const response = await axios.get(
-        `${API_BASE_URL}/reports/session/${doctorId}/${dispensaryId}/${date}`, 
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+      // Prepare data to send
+      const updateData = {
+        status,
+        ...additionalInfo,
+        checkedInTime: additionalInfo?.checkedInTime instanceof Date 
+          ? additionalInfo.checkedInTime.toISOString() 
+          : additionalInfo?.checkedInTime,
+        completedTime: additionalInfo?.completedTime instanceof Date
+          ? additionalInfo.completedTime.toISOString()
+          : additionalInfo?.completedTime
+      };
+      
+      const response = await axios.patch(
+        `${API_URL}/bookings/${id}/status`, 
+        updateData,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      return response.data;
+      if (!response.data) return null;
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        bookingDate: new Date(response.data.bookingDate),
+        checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
+        completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
     } catch (error) {
-      console.error('Error fetching bookings for session:', error);
-      
-      // For development - mock data
-      return mockBookings.filter(booking => 
-        booking.doctorId === doctorId && 
-        booking.dispensaryId === dispensaryId && 
-        new Date(booking.bookingDate).toDateString() === new Date(date).toDateString()
+      console.error('Error updating booking status:', error);
+      throw new Error('Failed to update booking status');
+    }
+  },
+
+  // Cancel a booking
+  cancelBooking: async (id: string, reason?: string): Promise<Booking | null> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.patch(
+        `${API_URL}/bookings/${id}/cancel`, 
+        { reason },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      if (!response.data) return null;
+      
+      return {
+        ...response.data,
+        id: response.data._id,
+        bookingDate: new Date(response.data.bookingDate),
+        checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
+        completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      throw new Error('Failed to cancel booking');
+    }
+  },
+
+  // Get available time slots for a doctor at a dispensary on a specific date
+  getAvailableTimeSlots: async (
+    doctorId: string,
+    dispensaryId: string,
+    date: Date
+  ): Promise<TimeSlotAvailability> => {
+    try {
+      return TimeSlotService.getAvailableTimeSlots(doctorId, dispensaryId, date);
+    } catch (error) {
+      console.error('Error fetching available time slots:', error);
+      throw new Error('Failed to fetch available time slots');
     }
   }
 };
