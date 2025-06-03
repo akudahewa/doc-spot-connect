@@ -20,7 +20,7 @@ export interface BookingSummary {
   timeSlot: string;
   appointmentNumber: number;
   estimatedTime: string;
-  status: BookingStatus;
+  status: string;
   patient: {
     name: string;
     phone: string;
@@ -33,6 +33,12 @@ export interface BookingSummary {
   dispensary: {
     name: string;
     address: string;
+  };
+  fees?: {
+    doctorFee: number;
+    dispensaryFee: number;
+    bookingCommission: number;
+    totalAmount: number;
   };
   symptoms?: string;
   createdAt: Date;
@@ -209,7 +215,7 @@ export const BookingService = {
     }
   },
 
-  // Get booking summary by transaction ID
+  // Get booking summary
   getBookingSummary: async (transactionId: string): Promise<BookingSummary> => {
     try {
       const token = localStorage.getItem('auth_token');

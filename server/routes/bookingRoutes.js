@@ -1,8 +1,10 @@
+
 const express = require('express');
 const router = express.Router();
 const Booking = require('../models/Booking');
 const TimeSlotConfig = require('../models/TimeSlotConfig');
 const AbsentTimeSlot = require('../models/AbsentTimeSlot');
+const DoctorDispensary = require('../models/DoctorDispensary');
 const mongoose = require('mongoose');
 
 // Get all bookings
@@ -445,6 +447,13 @@ router.get('/summary/:transactionId', async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    // Get fee information for this doctor-dispensary combination
+    const feeInfo = await DoctorDispensary.findOne({
+      doctorId: booking.doctorId._id,
+      dispensaryId: booking.dispensaryId._id,
+      isActive: true
+    });
+
     // Format the summary data
     const summary = {
       transactionId: booking.transactionId,
@@ -466,6 +475,12 @@ router.get('/summary/:transactionId', async (req, res) => {
         name: booking.dispensaryId.name,
         address: booking.dispensaryId.address
       },
+      fees: feeInfo ? {
+        doctorFee: feeInfo.doctorFee,
+        dispensaryFee: feeInfo.dispensaryFee,
+        bookingCommission: feeInfo.bookingCommission,
+        totalAmount: feeInfo.doctorFee + feeInfo.dispensaryFee + feeInfo.bookingCommission
+      } : null,
       symptoms: booking.symptoms,
       createdAt: booking.createdAt
     };

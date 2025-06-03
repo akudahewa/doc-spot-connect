@@ -88,6 +88,30 @@ const BookingSummary = () => {
             </div>
           </div>
 
+          {summary.fees && (
+            <div className="border-t pt-4">
+              <h3 className="font-semibold mb-3">Fee Breakdown</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Doctor Fee:</span>
+                  <span>${summary.fees.doctorFee.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Dispensary Fee:</span>
+                  <span>${summary.fees.dispensaryFee.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Booking Commission:</span>
+                  <span>${summary.fees.bookingCommission.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                  <span>Total Amount:</span>
+                  <span>${summary.fees.totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {summary.symptoms && (
             <div>
               <h3 className="font-semibold mb-2">Symptoms</h3>
