@@ -162,7 +162,7 @@ const DoctorPerformance: React.FC = () => {
                     {report.bookings?.map((booking) => (
                       <tr key={booking.id}>
                         <td className="border border-gray-300 p-2">
-                          {format(new Date(booking.date), 'MMM d, yyyy')}
+                          {format(new Date(booking.bookingDate), 'MMM d, yyyy')}
                         </td>
                         <td className="border border-gray-300 p-2">{booking.timeSlot}</td>
                         <td className="border border-gray-300 p-2">{booking.status}</td>

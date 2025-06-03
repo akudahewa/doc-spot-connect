@@ -69,6 +69,35 @@ export const BookingService = {
     }
   },
 
+  // Get bookings by doctor, dispensary, and date - alias for the above method
+  getBookingsByDoctorDispensaryDate: async (
+    doctorId: string,
+    dispensaryId: string,
+    formattedDate: string
+  ): Promise<Booking[]> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      const response = await axios.get(
+        `${API_URL}/bookings/doctor/${doctorId}/dispensary/${dispensaryId}/date/${formattedDate}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return response.data.map((booking: any) => ({
+        ...booking,
+        id: booking._id,
+        bookingDate: new Date(booking.bookingDate),
+        checkedInTime: booking.checkedInTime ? new Date(booking.checkedInTime) : undefined,
+        completedTime: booking.completedTime ? new Date(booking.completedTime) : undefined,
+        createdAt: new Date(booking.createdAt),
+        updatedAt: new Date(booking.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      throw new Error('Failed to fetch bookings');
+    }
+  },
+
   // Get a booking by ID
   getBookingById: async (id: string): Promise<Booking | null> => {
     try {
@@ -128,18 +157,6 @@ export const BookingService = {
     try {
       // Get all available slots for this date
       const availability = await TimeSlotService.getAvailableTimeSlots(doctorId, dispensaryId, date);
-      // Format date to YYYY-MM-DD format without timezone conversion
-      // const year = date.getFullYear();
-      // const month = String(date.getMonth() + 1).padStart(2, '0');
-      // const day = String(date.getDate()).padStart(2, '0');
-      // const formattedDate = `${year}-${month}-${day}`;
-      
-      // console.log("Original date:", date);
-      // console.log("Formatted date:", formattedDate);
-      
-      // const response = await axios.get(
-      //   `${API_URL}/bookings/next-available/${doctorId}/${dispensaryId}/${formattedDate}`
-      // );
       
       // Return the availability data, which includes availability status, session info, and slots
       return availability;
