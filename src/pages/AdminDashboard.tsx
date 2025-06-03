@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { UserRole } from '@/api/models';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import DoctorDispensaryFeeManager from '@/components/admin/DoctorDispensaryFeeManager';
 import axios from 'axios';
 
 // Get API URL from environment variables with fallback
@@ -107,12 +108,13 @@ const AdminDashboard = () => {
         </div>
         
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-8">
+          <TabsList className="grid grid-cols-2 md:grid-cols-7 mb-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="dispensaries">Dispensaries</TabsTrigger>
             <TabsTrigger value="doctors">Doctors</TabsTrigger>
             <TabsTrigger value="bookings">Bookings</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="fee-management">Fee Management</TabsTrigger>
             <TabsTrigger value="user-dispensary">Assign Users</TabsTrigger>
           </TabsList>
           
@@ -329,6 +331,10 @@ const AdminDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="fee-management" className="space-y-6">
+            <DoctorDispensaryFeeManager />
           </TabsContent>
 
           <TabsContent value="user-dispensary" className="space-y-6">
