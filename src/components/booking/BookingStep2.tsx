@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AvailableTimeSlot } from '@/api/services/TimeSlotService';
-import BookingSummary from './BookingSummary';
+import { Card, CardContent } from '@/components/ui/card';
+import { format } from 'date-fns';
 
 interface BookingStep2Props {
   nextAppointment: AvailableTimeSlot | null;
@@ -40,10 +41,14 @@ const BookingStep2: React.FC<BookingStep2Props> = ({
   return (
     <>
       {nextAppointment && selectedDate && (
-        <BookingSummary
-          appointment={nextAppointment}
-          date={selectedDate}
-        />
+        <Card className="mb-6 border-primary">
+          <CardContent className="p-4">
+            <h3 className="font-semibold mb-2">Appointment Summary</h3>
+            <p>Date: {format(selectedDate, 'PPP')}</p>
+            <p>Appointment #: {nextAppointment.appointmentNumber}</p>
+            <p>Estimated Time: {nextAppointment.estimatedTime}</p>
+          </CardContent>
+        </Card>
       )}
       
       <div className="space-y-6">

@@ -1,24 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
-import { ReportService, DailyBookingSummary } from '@/api/services/ReportService';
+import { ReportService, type DailyBookingSummary } from '@/api/services/ReportService';
 import { format } from 'date-fns';
-import {
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  CircularProgress,
-  Box
-} from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar } from '@/components/ui/calendar';
+import { Label } from '@/components/ui/label';
 
 const DailyBookings: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -46,131 +32,123 @@ const DailyBookings: React.FC = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center min-h-screen">
+        Loading...
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <Typography color="error">{error}</Typography>
-      </Box>
+      <div className="flex justify-center items-center min-h-screen text-red-600">
+        {error}
+      </div>
     );
   }
 
   return (
-    <Box p={3}>
-      <Typography variant="h4" gutterBottom>
-        Daily Bookings Report
-      </Typography>
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">Daily Bookings Report</h1>
 
-      <Box sx={{ mb: 3 }}>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <DatePicker
-            label="Select Date"
-            value={selectedDate}
-            onChange={(newValue: Date | null) => {
-              if (newValue) {
-                setSelectedDate(newValue);
-              }
-            }}
-          />
-        </LocalizationProvider>
-      </Box>
+      <div className="mb-6">
+        <Label>Select Date</Label>
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={(date: Date | undefined) => {
+            if (date) {
+              setSelectedDate(date);
+            }
+          }}
+          className="rounded-md border"
+        />
+      </div>
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Total Bookings
-              </Typography>
-              <Typography variant="h5">
-                {report?.total || 0}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Completed
-              </Typography>
-              <Typography variant="h5" color="primary">
-                {report?.completed || 0}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Cancelled
-              </Typography>
-              <Typography variant="h5" color="error">
-                {report?.cancelled || 0}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                No Shows
-              </Typography>
-              <Typography variant="h5" color="warning.main">
-                {report?.noShow || 0}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Total Bookings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{report?.total || 0}</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Completed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-green-600">{report?.completed || 0}</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Cancelled</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-red-600">{report?.cancelled || 0}</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">No Shows</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-yellow-600">{report?.noShow || 0}</p>
+          </CardContent>
+        </Card>
+      </div>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Time Slot</TableCell>
-              <TableCell>Patient Name</TableCell>
-              <TableCell>Phone</TableCell>
-              <TableCell>Doctor</TableCell>
-              <TableCell>Dispensary</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Checked In</TableCell>
-              <TableCell>Completed</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {report?.bookings.map((booking) => (
-              <TableRow key={booking.id}>
-                <TableCell>{booking.timeSlot}</TableCell>
-                <TableCell>{booking.patientName}</TableCell>
-                <TableCell>{booking.patientPhone}</TableCell>
-                <TableCell>{booking.doctor.name}</TableCell>
-                <TableCell>{booking.dispensary.name}</TableCell>
-                <TableCell>{booking.status}</TableCell>
-                <TableCell>
-                  {booking.checkedInTime
-                    ? format(new Date(booking.checkedInTime), 'HH:mm')
-                    : '-'}
-                </TableCell>
-                <TableCell>
-                  {booking.completedTime
-                    ? format(new Date(booking.completedTime), 'HH:mm')
-                    : '-'}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
+      <Card>
+        <CardHeader>
+          <CardTitle>Booking Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-gray-300">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="border border-gray-300 p-2 text-left">Time Slot</th>
+                  <th className="border border-gray-300 p-2 text-left">Patient Name</th>
+                  <th className="border border-gray-300 p-2 text-left">Phone</th>
+                  <th className="border border-gray-300 p-2 text-left">Doctor</th>
+                  <th className="border border-gray-300 p-2 text-left">Dispensary</th>
+                  <th className="border border-gray-300 p-2 text-left">Status</th>
+                  <th className="border border-gray-300 p-2 text-left">Checked In</th>
+                  <th className="border border-gray-300 p-2 text-left">Completed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report?.bookings.map((booking) => (
+                  <tr key={booking.id}>
+                    <td className="border border-gray-300 p-2">{booking.timeSlot}</td>
+                    <td className="border border-gray-300 p-2">{booking.patientName}</td>
+                    <td className="border border-gray-300 p-2">{booking.patientPhone}</td>
+                    <td className="border border-gray-300 p-2">{booking.doctor.name}</td>
+                    <td className="border border-gray-300 p-2">{booking.dispensary.name}</td>
+                    <td className="border border-gray-300 p-2">{booking.status}</td>
+                    <td className="border border-gray-300 p-2">
+                      {booking.checkedInTime
+                        ? format(new Date(booking.checkedInTime), 'HH:mm')
+                        : '-'}
+                    </td>
+                    <td className="border border-gray-300 p-2">
+                      {booking.completedTime
+                        ? format(new Date(booking.completedTime), 'HH:mm')
+                        : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
-export default DailyBookings; 
+export default DailyBookings;

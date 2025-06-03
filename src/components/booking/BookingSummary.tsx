@@ -1,6 +1,7 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { BookingService, BookingSummary } from '@/api/services/BookingService';
+import { BookingService, type BookingSummary as BookingSummaryType } from '@/api/services/BookingService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -10,7 +11,7 @@ const BookingSummary = () => {
   const { transactionId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [summary, setSummary] = useState<BookingSummary | null>(null);
+  const [summary, setSummary] = useState<BookingSummaryType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
