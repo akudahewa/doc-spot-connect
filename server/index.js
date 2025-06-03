@@ -1,3 +1,4 @@
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -13,6 +14,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const userDispensary = require('./routes/userDispensaryRoutes');
 const userRoutes = require('./routes/userRoutes');
+const doctorDispensaryRoutes = require('./routes/doctorDispensaryRoutes');
 
 // Create Express app
 const app = express();
@@ -40,6 +42,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/user-dispensary', userDispensary);
 app.use('/api/users', userRoutes);
+app.use('/api/doctor-dispensary', doctorDispensaryRoutes);
 
 // Base route
 app.get('/api', (req, res) => {
