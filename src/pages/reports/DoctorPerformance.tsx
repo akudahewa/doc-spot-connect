@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const DoctorPerformance: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -147,40 +148,40 @@ const DoctorPerformance: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border border-gray-300 p-2">Date</th>
-                      <th className="border border-gray-300 p-2">Time Slot</th>
-                      <th className="border border-gray-300 p-2">Status</th>
-                      <th className="border border-gray-300 p-2">Dispensary</th>
-                      <th className="border border-gray-300 p-2">Checked In</th>
-                      <th className="border border-gray-300 p-2">Completed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time Slot</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Dispensary</TableHead>
+                      <TableHead>Checked In</TableHead>
+                      <TableHead>Completed</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {report.bookings?.map((booking) => (
-                      <tr key={booking.id}>
-                        <td className="border border-gray-300 p-2">
+                      <TableRow key={booking.id}>
+                        <TableCell>
                           {format(new Date(booking.bookingDate), 'MMM d, yyyy')}
-                        </td>
-                        <td className="border border-gray-300 p-2">{booking.timeSlot}</td>
-                        <td className="border border-gray-300 p-2">{booking.status}</td>
-                        <td className="border border-gray-300 p-2">{booking.dispensary.name}</td>
-                        <td className="border border-gray-300 p-2">
+                        </TableCell>
+                        <TableCell>{booking.timeSlot}</TableCell>
+                        <TableCell>{booking.status}</TableCell>
+                        <TableCell>{booking.dispensary.name}</TableCell>
+                        <TableCell>
                           {booking.checkedInTime
                             ? format(new Date(booking.checkedInTime), 'HH:mm')
                             : '-'}
-                        </td>
-                        <td className="border border-gray-300 p-2">
+                        </TableCell>
+                        <TableCell>
                           {booking.completedTime
                             ? format(new Date(booking.completedTime), 'HH:mm')
                             : '-'}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
