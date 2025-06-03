@@ -182,8 +182,8 @@ const PERMISSIONS = {
 // Auth0 roles mapping
 const ROLES = {
   SUPER_ADMIN: 'super_admin',
-  DISPENSARY_ADMIN: 'dispensary_admin',
-  DISPENSARY_STAFF: 'dispensary_staff'
+  hospital_admin: 'hospital_admin',
+  hospital_staff: 'hospital_staff'
 };
 
 module.exports = {

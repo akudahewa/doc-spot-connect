@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const Report = require('../models/Report');
@@ -6,9 +5,11 @@ const Booking = require('../models/Booking');
 const Doctor = require('../models/Doctor');
 const Dispensary = require('../models/Dispensary');
 const authMiddleware = require('../middleware/authMiddleware');
+const { validateJwt, requireRole } = require('../middleware/authMiddleware');
+const moment = require('moment');
 
 // Get all reports
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const reports = await Report.find().sort({ createdAt: -1 });
     res.json(reports);
@@ -19,7 +20,7 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // Get reports by dispensary
-router.get('/dispensary/:dispensaryId', authMiddleware, async (req, res) => {
+router.get('/dispensary/:dispensaryId', async (req, res) => {
   try {
     const reports = await Report.find({
       dispensaryId: req.params.dispensaryId
@@ -33,7 +34,7 @@ router.get('/dispensary/:dispensaryId', authMiddleware, async (req, res) => {
 });
 
 // Generate daily bookings report
-router.post('/generate/daily-bookings', authMiddleware, async (req, res) => {
+router.post('/generate/daily-bookings', async (req, res) => {
   try {
     const { title, startDate, endDate, dispensaryId } = req.body;
     
@@ -105,7 +106,7 @@ router.post('/generate/daily-bookings', authMiddleware, async (req, res) => {
 });
 
 // Generate monthly summary report
-router.post('/generate/monthly-summary', authMiddleware, async (req, res) => {
+router.post('/generate/monthly-summary', async (req, res) => {
   try {
     const { title, startDate, endDate, dispensaryId } = req.body;
     
@@ -184,7 +185,7 @@ router.post('/generate/monthly-summary', authMiddleware, async (req, res) => {
 });
 
 // Get session report (bookings for a specific doctor, dispensary, and date)
-router.get('/session/:doctorId/:dispensaryId/:date', authMiddleware, async (req, res) => {
+router.get('/session/:doctorId/:dispensaryId/:date', async (req, res) => {
   try {
     const { doctorId, dispensaryId, date } = req.params;
     
@@ -203,7 +204,7 @@ router.get('/session/:doctorId/:dispensaryId/:date', authMiddleware, async (req,
         $lte: endDate
       }
     }).sort({ appointmentNumber: 1 });
-    
+
     res.json(bookings);
   } catch (error) {
     console.error('Error getting session report:', error);
@@ -212,7 +213,7 @@ router.get('/session/:doctorId/:dispensaryId/:date', authMiddleware, async (req,
 });
 
 // Generate doctor performance report
-router.post('/generate/doctor-performance', authMiddleware, async (req, res) => {
+router.post('/generate/doctor-performance', async (req, res) => {
   try {
     const { title, startDate, endDate, dispensaryId } = req.body;
     
@@ -292,7 +293,7 @@ router.post('/generate/doctor-performance', authMiddleware, async (req, res) => 
 });
 
 // Generate dispensary revenue report
-router.post('/generate/dispensary-revenue', authMiddleware, async (req, res) => {
+router.post('/generate/dispensary-revenue', async (req, res) => {
   try {
     const { title, startDate, endDate, dispensaryId } = req.body;
     
@@ -370,6 +371,171 @@ router.post('/generate/dispensary-revenue', authMiddleware, async (req, res) => 
   } catch (error) {
     console.error('Error generating dispensary revenue report:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get daily bookings report
+router.get('/daily-bookings', validateJwt, async (req, res) => {
+  try {
+    const { date, dispensaryId } = req.query;
+    const startDate = moment(date).startOf('day').toDate();
+    const endDate = moment(date).endOf('day').toDate();
+
+    const query = {
+      bookingDate: { $gte: startDate, $lte: endDate }
+    };
+
+    if (dispensaryId) {
+      query.dispensaryId = dispensaryId;
+    }
+
+    const bookings = await Booking.find(query)
+      .populate('doctorId', 'name specialization')
+      .populate('dispensaryId', 'name address')
+      .sort({ bookingDate: 1 });
+
+    const summary = {
+      total: bookings.length,
+      completed: bookings.filter(b => b.status === 'completed').length,
+      cancelled: bookings.filter(b => b.status === 'cancelled').length,
+      noShow: bookings.filter(b => b.status === 'no_show').length,
+      bookings: bookings.map(booking => ({
+        id: booking._id,
+        timeSlot: booking.timeSlot,
+        patientName: booking.patientName,
+        patientPhone: booking.patientPhone,
+        status: booking.status,
+        doctor: booking.doctorId,
+        dispensary: booking.dispensaryId,
+        checkedInTime: booking.checkedInTime,
+        completedTime: booking.completedTime
+      }))
+    };
+
+    res.json(summary);
+  } catch (error) {
+    console.error('Daily bookings report error:', error);
+    res.status(500).json({ message: 'Failed to generate daily bookings report' });
+  }
+});
+
+// Get monthly summary report
+router.get('/monthly-summary', validateJwt, async (req, res) => {
+  try {
+    const { month, year, dispensaryId } = req.query;
+    const startDate = moment(`${year}-${month}-01`).startOf('month').toDate();
+    const endDate = moment(startDate).endOf('month').toDate();
+
+    const query = {
+      bookingDate: { $gte: startDate, $lte: endDate }
+    };
+
+    if (dispensaryId) {
+      query.dispensaryId = dispensaryId;
+    }
+
+    const bookings = await Booking.find(query)
+      .populate('doctorId', 'name specialization')
+      .populate('dispensaryId', 'name address');
+
+    // Group by date
+    const dailyStats = {};
+    bookings.forEach(booking => {
+      const date = moment(booking.bookingDate).format('YYYY-MM-DD');
+      if (!dailyStats[date]) {
+        dailyStats[date] = {
+          total: 0,
+          completed: 0,
+          cancelled: 0,
+          noShow: 0
+        };
+      }
+      dailyStats[date].total++;
+      dailyStats[date][booking.status]++;
+    });
+
+    const summary = {
+      totalBookings: bookings.length,
+      completedBookings: bookings.filter(b => b.status === 'completed').length,
+      cancelledBookings: bookings.filter(b => b.status === 'cancelled').length,
+      noShowBookings: bookings.filter(b => b.status === 'no_show').length,
+      dailyStats: Object.entries(dailyStats).map(([date, stats]) => ({
+        date,
+        ...stats
+      }))
+    };
+
+    res.json(summary);
+  } catch (error) {
+    console.error('Monthly summary report error:', error);
+    res.status(500).json({ message: 'Failed to generate monthly summary report' });
+  }
+});
+
+// Get doctor performance report
+router.get('/doctor-performance', validateJwt, async (req, res) => {
+  try {
+    const { doctorId, startDate, endDate, dispensaryId } = req.query;
+    const query = {
+      doctorId,
+      bookingDate: {
+        $gte: moment(startDate).startOf('day').toDate(),
+        $lte: moment(endDate).endOf('day').toDate()
+      }
+    };
+
+    if (dispensaryId) {
+      query.dispensaryId = dispensaryId;
+    }
+
+    const bookings = await Booking.find(query)
+      .populate('dispensaryId', 'name address')
+      .sort({ bookingDate: 1 });
+
+    // Calculate performance metrics
+    const totalBookings = bookings.length;
+    const completedBookings = bookings.filter(b => b.status === 'completed').length;
+    const cancelledBookings = bookings.filter(b => b.status === 'cancelled').length;
+    const noShowBookings = bookings.filter(b => b.status === 'no_show').length;
+
+    // Calculate average consultation time
+    const completedBookingsWithTimes = bookings.filter(b => 
+      b.status === 'completed' && b.checkedInTime && b.completedTime
+    );
+    
+    const totalConsultationTime = completedBookingsWithTimes.reduce((total, booking) => {
+      const duration = moment(booking.completedTime).diff(moment(booking.checkedInTime), 'minutes');
+      return total + duration;
+    }, 0);
+
+    const averageConsultationTime = completedBookingsWithTimes.length > 0
+      ? totalConsultationTime / completedBookingsWithTimes.length
+      : 0;
+
+    const performance = {
+      totalBookings,
+      completedBookings,
+      cancelledBookings,
+      noShowBookings,
+      completionRate: totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0,
+      cancellationRate: totalBookings > 0 ? (cancelledBookings / totalBookings) * 100 : 0,
+      noShowRate: totalBookings > 0 ? (noShowBookings / totalBookings) * 100 : 0,
+      averageConsultationTime,
+      bookings: bookings.map(booking => ({
+        id: booking._id,
+        date: booking.bookingDate,
+        timeSlot: booking.timeSlot,
+        status: booking.status,
+        dispensary: booking.dispensaryId,
+        checkedInTime: booking.checkedInTime,
+        completedTime: booking.completedTime
+      }))
+    };
+
+    res.json(performance);
+  } catch (error) {
+    console.error('Doctor performance report error:', error);
+    res.status(500).json({ message: 'Failed to generate doctor performance report' });
   }
 });
 

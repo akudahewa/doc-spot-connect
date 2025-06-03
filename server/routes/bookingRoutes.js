@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const Booking = require('../models/Booking');
@@ -87,6 +86,11 @@ router.post('/', async (req, res) => {
     
     // Generate a temporary patientId if not provided
     const patientId = req.body.patientId || `temp-${patientPhone}`;
+    
+    // Generate transaction ID
+    const timestamp = Date.now().toString();
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const transactionId = `TRX-${timestamp}-${random}`;
     
     // Generate booking date from string - ensure we use the date only
     // Create date with the local timezone, without any time component
@@ -215,8 +219,6 @@ router.post('/', async (req, res) => {
     
     const timeSlot = `${estimatedHours}:${estimatedMinutes}-${endHours}:${endMinutes}`;
     
-    console.log("Time slot:", timeSlot);
-    
     // Create the booking
     const booking = new Booking({
       patientId,
@@ -232,7 +234,8 @@ router.post('/', async (req, res) => {
       isPatientVisited: false,
       patientName,
       patientPhone,
-      patientEmail
+      patientEmail,
+      transactionId
     });
     
     await booking.save();
@@ -428,6 +431,49 @@ router.get('/next-available/:doctorId/:dispensaryId/:date', async (req, res) => 
       message: 'Error fetching next available appointment',
       error: error.message
     });
+  }
+});
+
+// Get booking summary by transaction ID
+router.get('/summary/:transactionId', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ transactionId: req.params.transactionId })
+      .populate('doctorId', 'name specialization')
+      .populate('dispensaryId', 'name address');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Format the summary data
+    const summary = {
+      transactionId: booking.transactionId,
+      bookingDate: booking.bookingDate,
+      timeSlot: booking.timeSlot,
+      appointmentNumber: booking.appointmentNumber,
+      estimatedTime: booking.estimatedTime,
+      status: booking.status,
+      patient: {
+        name: booking.patientName,
+        phone: booking.patientPhone,
+        email: booking.patientEmail
+      },
+      doctor: {
+        name: booking.doctorId.name,
+        specialization: booking.doctorId.specialization
+      },
+      dispensary: {
+        name: booking.dispensaryId.name,
+        address: booking.dispensaryId.address
+      },
+      symptoms: booking.symptoms,
+      createdAt: booking.createdAt
+    };
+
+    res.json(summary);
+  } catch (error) {
+    console.error('Error getting booking summary:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

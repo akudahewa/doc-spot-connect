@@ -19,7 +19,7 @@ const mockUsers: User[] = [
     name: 'John Dispensary Admin',
     email: 'john@cityhealthclinic.com',
     passwordHash: 'hashed_password_456',
-    role: UserRole.DISPENSARY_ADMIN,
+    role: UserRole.hospital_admin,
     dispensaryIds: ['1'], // City Health Clinic
     isActive: true,
     lastLogin: new Date('2023-07-10'),
@@ -31,7 +31,7 @@ const mockUsers: User[] = [
     name: 'Sarah Staff',
     email: 'sarah@westsidemedical.com',
     passwordHash: 'hashed_password_789',
-    role: UserRole.DISPENSARY_STAFF,
+    role: UserRole.hospital_staff,
     dispensaryIds: ['2'], // Westside Medical Center
     isActive: true,
     createdAt: new Date('2023-03-20'),
@@ -42,7 +42,7 @@ const mockUsers: User[] = [
     name: 'Multi-Dispensary Admin',
     email: 'multi@dispensaries.com',
     passwordHash: 'hashed_password_101',
-    role: UserRole.DISPENSARY_ADMIN,
+    role: UserRole.hospital_admin,
     dispensaryIds: ['1', '3'], // Can manage multiple dispensaries
     isActive: true,
     createdAt: new Date('2023-04-10'),

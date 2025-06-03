@@ -4,6 +4,40 @@ import { TimeSlotService, AvailableTimeSlot, TimeSlotAvailability } from './Time
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+export interface BookingCreateParams {
+  doctorId: string;
+  dispensaryId: string;
+  bookingDate: Date;
+  patientName: string;
+  patientPhone: string;
+  patientEmail?: string;
+  symptoms?: string;
+}
+
+export interface BookingSummary {
+  transactionId: string;
+  bookingDate: Date;
+  timeSlot: string;
+  appointmentNumber: number;
+  estimatedTime: string;
+  status: BookingStatus;
+  patient: {
+    name: string;
+    phone: string;
+    email?: string;
+  };
+  doctor: {
+    name: string;
+    specialization: string;
+  };
+  dispensary: {
+    name: string;
+    address: string;
+  };
+  symptoms?: string;
+  createdAt: Date;
+}
+
 export const BookingService = {
   // Get all bookings for a specific date, doctor, and dispensary
   getBookings: async (
@@ -119,30 +153,20 @@ export const BookingService = {
   },
 
   // Create a new booking
-  createBooking: async (bookingData: {
-    patientName: string;
-    patientPhone: string;
-    patientEmail?: string;
-    symptoms?: string;
-    doctorId: string;
-    dispensaryId: string;
-    bookingDate: Date;
-  }): Promise<Booking> => {
+  createBooking: async (booking: BookingCreateParams): Promise<{ booking: Booking; transactionId: string }> => {
     try {
       const token = localStorage.getItem('auth_token');
       
       // Format booking date to YYYY-MM-DD format
-      const year = bookingData.bookingDate.getFullYear();
-      const month = String(bookingData.bookingDate.getMonth() + 1).padStart(2, '0');
-      const day = String(bookingData.bookingDate.getDate()).padStart(2, '0');
+      const year = booking.bookingDate.getFullYear();
+      const month = String(booking.bookingDate.getMonth() + 1).padStart(2, '0');
+      const day = String(booking.bookingDate.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
       
       const bookingToSend = {
-        ...bookingData,
+        ...booking,
         bookingDate: formattedDate,
       };
-      
-      console.log("Sending booking request:", bookingToSend);
       
       const response = await axios.post(
         `${API_URL}/bookings`, 
@@ -151,19 +175,40 @@ export const BookingService = {
       );
       
       return {
-        ...response.data,
-        id: response.data._id,
-        bookingDate: new Date(response.data.bookingDate),
-        isPaid: response.data.isPaid || false,
-        isPatientVisited: response.data.isPatientVisited || false,
-        checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
-        completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
-        createdAt: new Date(response.data.createdAt),
-        updatedAt: new Date(response.data.updatedAt)
+        booking: {
+          ...response.data,
+          id: response.data._id,
+          bookingDate: new Date(response.data.bookingDate),
+          checkedInTime: response.data.checkedInTime ? new Date(response.data.checkedInTime) : undefined,
+          completedTime: response.data.completedTime ? new Date(response.data.completedTime) : undefined,
+          createdAt: new Date(response.data.createdAt),
+          updatedAt: new Date(response.data.updatedAt)
+        },
+        transactionId: response.data.transactionId
       };
     } catch (error) {
       console.error('Error creating booking:', error);
       throw new Error('Failed to create booking');
+    }
+  },
+
+  // Get booking summary by transaction ID
+  getBookingSummary: async (transactionId: string): Promise<BookingSummary> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/bookings/summary/${transactionId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return {
+        ...response.data,
+        bookingDate: new Date(response.data.bookingDate),
+        createdAt: new Date(response.data.createdAt)
+      };
+    } catch (error) {
+      console.error('Error fetching booking summary:', error);
+      throw new Error('Failed to fetch booking summary');
     }
   },
 

@@ -19,11 +19,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false
   },
-  role: { 
-    type: String, 
-    required: true,
-    enum: ['super_admin', 'dispensary_admin', 'dispensary_staff']
-  },
+  // role: { 
+  //   type: String, 
+  //   required: true,
+  //   enum: ['super_admin', 'hospital_admin', 'hospital_staff']
+  // },
   dispensaryIds: [{ 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Dispensary' 

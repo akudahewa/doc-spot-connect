@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
@@ -68,12 +67,27 @@ const bookingSchema = new mongoose.Schema({
   patientEmail: {
     type: String
   },
+  transactionId: {
+    type: String,
+    required: true,
+    unique: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 }, {
   timestamps: true
+});
+
+// Generate unique transaction ID before saving
+bookingSchema.pre('save', async function(next) {
+  if (!this.transactionId) {
+    const timestamp = Date.now().toString();
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    this.transactionId = `TRX-${timestamp}-${random}`;
+  }
+  next();
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);

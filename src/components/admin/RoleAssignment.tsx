@@ -48,7 +48,7 @@ const RoleAssignment = ({ currentUserRole, dispensaryId }: RoleAssignmentProps) 
     email: '',
     password: '',
     confirmPassword: '',
-    role: UserRole.DISPENSARY_STAFF,
+    role: UserRole.hospital_staff,
     dispensaryIds: [] as string[],
     isActive: true
   });
@@ -64,7 +64,7 @@ const RoleAssignment = ({ currentUserRole, dispensaryId }: RoleAssignmentProps) 
         let usersData;
         if (currentUserRole === UserRole.SUPER_ADMIN) {
           usersData = await AuthService.getAllUsers();
-        } else if (currentUserRole === UserRole.DISPENSARY_ADMIN && dispensaryId) {
+        } else if (currentUserRole === UserRole.hospital_admin && dispensaryId) {
           usersData = await AuthService.getUsersByDispensary(dispensaryId);
         } else {
           usersData = [];
@@ -108,8 +108,8 @@ const RoleAssignment = ({ currentUserRole, dispensaryId }: RoleAssignmentProps) 
 
     // For dispensary admin, enforce their dispensary ID for staff they create
     let dispensaryIds = formData.dispensaryIds;
-    if (currentUserRole === UserRole.DISPENSARY_ADMIN && dispensaryId) {
-      dispensaryIds = formData.role === UserRole.DISPENSARY_STAFF ? [dispensaryId] : [];
+    if (currentUserRole === UserRole.hospital_admin && dispensaryId) {
+      dispensaryIds = formData.role === UserRole.hospital_staff ? [dispensaryId] : [];
     }
     
     try {
@@ -152,7 +152,7 @@ const RoleAssignment = ({ currentUserRole, dispensaryId }: RoleAssignmentProps) 
       email: '',
       password: '',
       confirmPassword: '',
-      role: currentUserRole === UserRole.SUPER_ADMIN ? UserRole.DISPENSARY_ADMIN : UserRole.DISPENSARY_STAFF,
+      role: currentUserRole === UserRole.SUPER_ADMIN ? UserRole.hospital_admin : UserRole.hospital_staff,
       dispensaryIds: [],
       isActive: true
     });
@@ -162,9 +162,9 @@ const RoleAssignment = ({ currentUserRole, dispensaryId }: RoleAssignmentProps) 
     switch (role) {
       case UserRole.SUPER_ADMIN:
         return 'Super Admin';
-      case UserRole.DISPENSARY_ADMIN:
+      case UserRole.hospital_admin:
         return 'Dispensary Admin';
-      case UserRole.DISPENSARY_STAFF:
+      case UserRole.hospital_staff:
         return 'Dispensary Staff';
       default:
         return role;
@@ -185,9 +185,9 @@ const RoleAssignment = ({ currentUserRole, dispensaryId }: RoleAssignmentProps) 
   // Determine available roles based on current user's role
   const getAvailableRoles = () => {
     if (currentUserRole === UserRole.SUPER_ADMIN) {
-      return [UserRole.DISPENSARY_ADMIN, UserRole.DISPENSARY_STAFF];
-    } else if (currentUserRole === UserRole.DISPENSARY_ADMIN) {
-      return [UserRole.DISPENSARY_STAFF];
+      return [UserRole.hospital_admin, UserRole.hospital_staff];
+    } else if (currentUserRole === UserRole.hospital_admin) {
+      return [UserRole.hospital_staff];
     }
     return [];
   };
@@ -271,7 +271,7 @@ const RoleAssignment = ({ currentUserRole, dispensaryId }: RoleAssignmentProps) 
                 </div>
               )}
               
-              {currentUserRole === UserRole.SUPER_ADMIN && formData.role === UserRole.DISPENSARY_ADMIN && (
+              {currentUserRole === UserRole.SUPER_ADMIN && formData.role === UserRole.hospital_admin && (
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="dispensaries" className="text-right">Dispensaries</Label>
                   <div className="col-span-3">

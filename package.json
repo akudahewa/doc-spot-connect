@@ -48,7 +48,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "cors": "^2.8.5",
-    "date-fns": "^3.6.0",
+    "date-fns": "^2.30.0",
     "embla-carousel-react": "^8.3.0",
     "input-otp": "^1.2.4",
     "jsonwebtoken": "^9.0.2",
@@ -69,7 +69,14 @@
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.3",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@auth0/auth0-react": "2.3.0",
+    "@mui/material": "^7.1.0",
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@mui/x-date-pickers": "^7.1.0",
+    "@mui/icons-material": "^7.1.0",
+    "react-toastify": "^10.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

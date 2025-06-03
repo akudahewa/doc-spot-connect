@@ -31,73 +31,22 @@ const AdminDashboard = () => {
       setIsLoading(true);
       console.log('Checking authentication...');
       
-      try {
+      //try {
         // Get token from local storage
         const token = localStorage.getItem('auth_token');
         console.log('Auth token found:', !!token);
-        
+        setIsLoading(false);
         if (!token) {
           console.log('No auth token in localStorage');
-          throw new Error("No authentication token found");
+          navigate('/login', { replace: true });
         }
-        
-        // Check if we're in a simulated environment
-        if (IS_LOVABLE_ENVIRONMENT || LOCAL_DEV_MODE) {
-          console.log('Using simulated authentication in development mode');
-          const user = JSON.parse(localStorage.getItem('current_user') || '{}');
-          if (!user || !user.id) {
-            throw new Error("Invalid user session");
-          }
-          setCurrentUser(user);
-          setIsLoading(false);
-          return;
-        }
-        
-        // Get current user with token from the API
-        console.log('Fetching current user with token from API...');
-        const response = await axios.get(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        if (!response.data) {
-          console.log('User validation failed');
-          throw new Error("Invalid user session");
-        }
-        
-        console.log('User authenticated successfully:', response.data.name);
-        
-        // Update current user state
-        setCurrentUser(response.data);
-        
-        // Update user data in localStorage in case it changed
-        localStorage.setItem('current_user', JSON.stringify(response.data));
-        
-      } catch (error: any) {
-        console.error("Authentication error:", error.message);
-        
-        // Show toast notification
-        toast({
-          title: "Session expired",
-          description: "Please log in again to continue",
-          variant: "destructive"
-        });
-        
-        // Clear authentication data
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('current_user');
-        
-        // Redirect to login
-        navigate('/login', { replace: true });
-        return;
-      } finally {
-        setIsLoading(false);
-      }
     };
     
     checkAuth();
   }, [navigate, toast]);
 
   const handleLogout = () => {
+    console.log("lLLLLLLLLLLL");
     localStorage.removeItem('auth_token');
     localStorage.removeItem('current_user');
     toast({
@@ -158,12 +107,13 @@ const AdminDashboard = () => {
         </div>
         
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 md:grid-cols-5 mb-8">
+          <TabsList className="grid grid-cols-2 md:grid-cols-6 mb-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="dispensaries">Dispensaries</TabsTrigger>
             <TabsTrigger value="doctors">Doctors</TabsTrigger>
             <TabsTrigger value="bookings">Bookings</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="user-dispensary">Assign Users</TabsTrigger>
           </TabsList>
           
           <TabsContent value="overview" className="space-y-6">
@@ -246,12 +196,15 @@ const AdminDashboard = () => {
                     <Button onClick={() => navigate('/admin/settings')} className="w-full">
                       System Settings
                     </Button>
+                    <Button onClick={() => navigate('/admin/user-dispensary')} className="w-full">
+                      User-Dispensary Assignment
+                    </Button>
                   </CardContent>
                 </Card>
               </div>
             )}
             
-            {currentUser?.role === UserRole.DISPENSARY_ADMIN && (
+            {currentUser?.role === UserRole.hospital_admin && (
               <div className="mt-8">
                 <Card>
                   <CardHeader>
@@ -273,7 +226,7 @@ const AdminDashboard = () => {
               </div>
             )}
             
-            {currentUser?.role === UserRole.DISPENSARY_STAFF && (
+            {currentUser?.role === UserRole.hospital_staff && (
               <div className="mt-8">
                 <Card>
                   <CardHeader>
@@ -359,12 +312,81 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <Button>Daily Bookings Report</Button>
-                  <Button>Monthly Summary Report</Button>
-                  <Button>Doctor Performance Report</Button>
+                  <Button onClick={() => navigate('/reports/daily-bookings')}>
+                    Daily Bookings Report
+                  </Button>
+                  <Button onClick={() => navigate('/reports/monthly-summary')}>
+                    Monthly Summary Report
+                  </Button>
+                  <Button onClick={() => navigate('/reports/doctor-performance')}>
+                    Doctor Performance Report
+                  </Button>
                   {currentUser?.role === UserRole.SUPER_ADMIN && (
-                    <Button>Dispensary Revenue Report</Button>
+                    <Button onClick={() => navigate('/reports/dispensary-revenue')}>
+                      Dispensary Revenue Report
+                    </Button>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="user-dispensary" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>User-Dispensary Assignment</CardTitle>
+                <CardDescription>
+                  Manage user assignments to dispensaries and their roles
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Button 
+                    onClick={() => navigate('/admin/user-dispensary')}
+                    className="w-full bg-medical-600 hover:bg-medical-700"
+                  >
+                    Manage Assignments
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/admin/users')}
+                    className="w-full"
+                  >
+                    Manage Users
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/admin/dispensaries')}
+                    className="w-full"
+                  >
+                    Manage Dispensaries
+                  </Button>
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-col space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  <p>Quick Actions:</p>
+                  <ul className="list-disc list-inside mt-2">
+                    <li>Assign users to dispensaries</li>
+                    <li>Manage user roles and permissions</li>
+                    <li>View current assignments</li>
+                    <li>Update or remove assignments</li>
+                  </ul>
+                </div>
+              </CardFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Assignments</CardTitle>
+                <CardDescription>
+                  Latest user-dispensary assignments and changes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* This would be populated with actual data */}
+                  <div className="text-sm text-muted-foreground">
+                    No recent assignments to display
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -43,7 +43,7 @@ const UserManagement = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: UserRole.DISPENSARY_STAFF,
+    role: UserRole.hospital_staff,
     dispensaryIds: [] as string[],
     isActive: true
   });
@@ -133,7 +133,7 @@ const UserManagement = () => {
       email: '',
       password: '',
       confirmPassword: '',
-      role: UserRole.DISPENSARY_STAFF,
+      role: UserRole.hospital_staff,
       dispensaryIds: [],
       isActive: true
     });
@@ -171,9 +171,9 @@ const UserManagement = () => {
     switch (role) {
       case UserRole.SUPER_ADMIN:
         return 'Super Admin';
-      case UserRole.DISPENSARY_ADMIN:
+      case UserRole.hospital_admin:
         return 'Dispensary Admin';
-      case UserRole.DISPENSARY_STAFF:
+      case UserRole.hospital_staff:
         return 'Dispensary Staff';
       default:
         return role;
@@ -262,13 +262,13 @@ const UserManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={UserRole.SUPER_ADMIN}>Super Admin</SelectItem>
-                    <SelectItem value={UserRole.DISPENSARY_ADMIN}>Dispensary Admin</SelectItem>
-                    <SelectItem value={UserRole.DISPENSARY_STAFF}>Dispensary Staff</SelectItem>
+                    <SelectItem value={UserRole.hospital_admin}>Dispensary Admin</SelectItem>
+                    <SelectItem value={UserRole.hospital_staff}>Dispensary Staff</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
-              {(formData.role === UserRole.DISPENSARY_ADMIN || formData.role === UserRole.DISPENSARY_STAFF) && (
+              {(formData.role === UserRole.hospital_admin || formData.role === UserRole.hospital_staff) && (
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="dispensaries" className="text-right">Dispensaries</Label>
                   <div className="col-span-3">

@@ -1,4 +1,3 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -12,6 +11,8 @@ const authRoutes = require('./routes/authRoutes');
 const timeSlotRoutes = require('./routes/timeSlotRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const userDispensary = require('./routes/userDispensaryRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 // Create Express app
 const app = express();
@@ -37,9 +38,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/timeslots', timeSlotRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/user-dispensary', userDispensary);
+app.use('/api/users', userRoutes);
 
 // Base route
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
   res.send('Doctor Reservation API is running');
 });
 

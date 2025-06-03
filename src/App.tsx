@@ -1,4 +1,3 @@
-
 import TimeSlotManagement from './pages/TimeSlotManagement';
 import Index from './pages/Index';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
@@ -18,6 +17,13 @@ import CreateDispensary from './pages/CreateDispensary';
 import EditDispensary from './pages/EditDispensary';
 import ViewDispensary from './pages/ViewDispensary';
 import AdminDispensaries from './pages/AdminDispensaries';
+import BookingSummary from '@/components/booking/BookingSummary';
+import Callback from './pages/Callback';
+import DailyBookings from '@/pages/reports/DailyBookings';
+import MonthlySummary from '@/pages/reports/MonthlySummary';
+import DoctorPerformance from '@/pages/reports/DoctorPerformance';
+import UserDispensaryAssignment from '@/pages/admin/UserDispensaryAssignment';
+import Signup from './pages/Signup';
 
 const App = () => {
   return (
@@ -29,6 +35,8 @@ const App = () => {
         <Route path="/doctors" element={<Doctors />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/callback" element={<Callback />} />
         
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -42,9 +50,18 @@ const App = () => {
         <Route path="/admin/dispensaries/create" element={<CreateDispensary />} />
         <Route path="/admin/dispensaries/edit/:id" element={<EditDispensary />} />
         <Route path="/admin/dispensaries/view/:id" element={<ViewDispensary />} />
+        <Route path="/admin/user-dispensary" element={<UserDispensaryAssignment />} />
         
         {/* Specific Routes */}
         <Route path="/doctor/:doctorId/dispensary/:dispensaryId/time-slots" element={<TimeSlotManagement />} />
+        
+        {/* Booking Summary Route */}
+        <Route path="/booking-summary/:transactionId" element={<BookingSummary />} />
+        
+        {/* Reports Routes */}
+        <Route path="/reports/daily-bookings" element={<DailyBookings />} />
+        <Route path="/reports/monthly-summary" element={<MonthlySummary />} />
+        <Route path="/reports/doctor-performance" element={<DoctorPerformance />} />
         
         {/* Catch All - 404 */}
         <Route path="*" element={<NotFound />} />

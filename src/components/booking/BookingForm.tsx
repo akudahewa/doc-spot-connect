@@ -8,6 +8,7 @@ import { TimeSlotAvailability } from '@/api/services/TimeSlotService';
 import BookingStep1 from './BookingStep1';
 import BookingStep2 from './BookingStep2';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface BookingFormProps {
   initialDoctorId?: string;
@@ -16,6 +17,7 @@ interface BookingFormProps {
 
 const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Form state
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -164,12 +166,8 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
     try {
       setIsLoading(true);
       
-      // Format the date to year-month-date format using date-fns
-      const formattedDateStr = format(selectedDate, 'yyyy-MM-dd');
-      console.log("Formatted date for booking:", formattedDateStr);
-      
       // Create booking
-      await BookingService.createBooking({
+      const { transactionId } = await BookingService.createBooking({
         patientName: name,
         patientPhone: phone,
         patientEmail: email || undefined,
@@ -179,18 +177,8 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
         bookingDate: selectedDate,
       });
       
-      toast({
-        title: 'Booking Confirmed!',
-        description: `Your appointment #${availability.slots[0].appointmentNumber} has been booked for ${format(selectedDate, 'PPP')} at ${availability.slots[0].estimatedTime}`,
-      });
-      
-      // Reset the form
-      setAvailability(null);
-      setName('');
-      setPhone('');
-      setEmail('');
-      setSymptoms('');
-      setCurrentStep(0);
+      // Navigate to booking summary page
+      navigate(`/booking-summary/${transactionId}`);
       
     } catch (error) {
       console.error('Error creating booking:', error);

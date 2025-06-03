@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -15,7 +14,8 @@ try {
     domain: process.env.AUTH0_DOMAIN,
     clientId: process.env.AUTH0_CLIENT_ID,
     clientSecret: process.env.AUTH0_CLIENT_SECRET,
-    scope: 'read:users update:users'
+    scope: 'read:users read:user_idp_tokens read:user_metadata read:user_app_metadata',
+    audience: `https://${process.env.AUTH0_DOMAIN}/api/v2/`
   });
   console.log('Auth0 Management API client initialized');
 } catch (error) {
@@ -41,141 +41,142 @@ router.get('/config', (req, res) => {
   });
 });
 
-// Auth0 callback route with more robust error handling
-router.post('/callback', async (req, res) => {
+// Authenticate via Auth0
+router.post('/login', async (req, res) => {
   try {
-    const { code, redirectUri } = req.body;
-    console.log('Auth callback received with code:', code ? 'Present (hidden)' : 'Not present');
-    console.log('Auth callback redirectUri:', redirectUri);
-    
-    if (!code) {
-      return res.status(400).json({ message: 'Authorization code is required' });
-    }
-    
-    console.log('Exchanging code for token with Auth0...');
-    console.log('Token exchange parameters:', {
-      grant_type: 'authorization_code',
-      client_id: process.env.AUTH0_CLIENT_ID,
-      client_secret: '(hidden)',
-      code: '(hidden)',
-      redirect_uri: redirectUri || process.env.AUTH0_CALLBACK_URL
-    });
-    
+    const { username, password } = req.body;
+    console.log("Login attempt for username:", username);
     const tokenResponse = await axios.post(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
-      grant_type: 'authorization_code',
+      grant_type: 'password',
+      username: username,
+      password: password,
       client_id: process.env.AUTH0_CLIENT_ID,
       client_secret: process.env.AUTH0_CLIENT_SECRET,
-      code,
-      redirect_uri: redirectUri || process.env.AUTH0_CALLBACK_URL
+      audience: process.env.AUTH0_AUDIENCE,
+      scope: 'openid profile email'
     });
-    
+
     if (!tokenResponse.data || !tokenResponse.data.access_token) {
       console.error('Token exchange failed:', tokenResponse.data);
-      return res.status(400).json({ message: 'Failed to exchange code for token' });
+      return res.status(400).json({ message: 'Failed to exchange credentials for token' });
     }
-    
-    console.log('Token received successfully');
-    
-    // Get user info with the access token
+    console.log('Token received successfully :'+JSON.stringify(tokenResponse.data));
     const userInfoResponse = await axios.get(`https://${process.env.AUTH0_DOMAIN}/userinfo`, {
-      headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` }
+      headers: { 
+        Authorization: `Bearer ${tokenResponse.data.access_token}`,
+        'Content-Type': 'application/json'
+      }
     });
-    
+
     const auth0User = userInfoResponse.data;
     console.log('User info retrieved:', {
       sub: auth0User.sub,
       email: auth0User.email,
       name: auth0User.name || auth0User.nickname
     });
-    
-    // Check if user exists in our database
+    const roleResponse = await auth0Management.users.getRoles({ id: auth0User.sub });
+    let roleNames = [];
+    if (roleResponse && roleResponse.data && Array.isArray(roleResponse.data)) {
+      roleNames = roleResponse.data.map(role => role.name);
+    }
+    console.log('Logged user has role :', JSON.stringify(roleResponse, null, 2));
+    let userRole = 'hospital_staff';
+    if (roleNames.includes('super_admin')) {
+      userRole = 'super_admin';
+    } else if (roleNames.includes('hospital_admin')) {
+      userRole = 'hospital_admin';
+    } else if (roleNames.includes('cpadmin')) {
+      userRole = 'super_admin'; 
+    }
     let user = await User.findOne({ auth0Id: auth0User.sub });
-    
-    // Set default role based on Auth0 
-    let userRole = 'dispensary_staff';
-    let userDispensaryIds = [];
-    
-    // Try to fetch user roles from Auth0 management API
-    if (auth0Management) {
-      try {
-        const auth0ManagementUser = await auth0Management.getUser({ id: auth0User.sub });
-        console.log('User roles from Auth0:', auth0ManagementUser.app_metadata?.roles || 'none');
-        
-        // Extract roles and permissions
-        if (auth0ManagementUser.app_metadata?.roles) {
-          if (auth0ManagementUser.app_metadata.roles.includes('super_admin')) {
-            userRole = 'super_admin';
-            console.log('User is a super admin');
-          } else if (auth0ManagementUser.app_metadata.roles.includes('dispensary_admin')) {
-            userRole = 'dispensary_admin';
-            console.log('User is a dispensary admin');
-          }
-        }
-        
-        userDispensaryIds = auth0ManagementUser.app_metadata?.dispensaryIds || [];
-      } catch (error) {
-        console.error('Failed to fetch user metadata from Auth0:', error);
-      }
-    }
-    
-    if (!user) {
-      console.log('Creating new user in database...');
-      
-      // Create new user in our database
-      user = new User({
-        name: auth0User.name || auth0User.nickname || auth0User.email,
-        email: auth0User.email,
-        auth0Id: auth0User.sub,
-        role: userRole,
-        dispensaryIds: userDispensaryIds,
-        isActive: true,
-        lastLogin: new Date()
-      });
-      
-      await user.save();
-      console.log('New user created in database');
-    } else {
-      // Update user login time and ensure role is correct
-      console.log('Updating existing user');
-      user.lastLogin = new Date();
-      
-      // Update role if it's changed in Auth0
-      if (userRole !== 'dispensary_staff') {
-        user.role = userRole;
-      }
-      
-      await user.save();
-    }
-    
-    // Use the ID token for client auth
-    const token = tokenResponse.data.id_token;
-    
-    console.log('Login successful, sending response');
     res.json({
-      token,
+      access_token: tokenResponse.data.access_token,
       user: {
         id: user._id,
         auth0Id: user.auth0Id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        dispensaryIds: user.dispensaryIds || []
-      },
-      message: 'Login successful'
+        role: userRole,
+      }
     });
   } catch (error) {
-    console.error('Auth0 callback error:', error);
-    
-    let errorDetails = 'No additional details';
-    if (error.response) {
-      console.error('Auth0 error response:', error.response.data);
-      errorDetails = JSON.stringify(error.response.data);
-    }
-    
-    res.status(500).json({ 
+    console.error('Login error:', error);
+    res.status(401).json({ 
       message: 'Authentication failed', 
-      error: error.message,
-      details: errorDetails
+      error: error.message
+    });
+  }
+});
+
+// Signup route
+router.post('/signup', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // Validate input
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Create user in Auth0
+    let auth0User;
+    try {
+      auth0User = await auth0Management.users.create({
+        email,
+        name,
+        password,
+        connection: 'Username-Password-Authentication',
+        email_verified: false
+      });
+    } catch (auth0Error) {
+      console.error('Error creating Auth0 user:', auth0Error);
+      return res.status(400).json({ 
+        message: 'Failed to create user account',
+        error: auth0Error.message 
+      });
+    }
+
+    // Create user in our database
+    console.log(">>>>>>>>>>>>>>>>>>> auth 9 >...... "+JSON.stringify(auth0User));
+    console.log("....... "+auth0User.data.user_id);
+    const user = new User({
+      name,
+      email,
+      auth0Id: auth0User.data.user_id,
+      dispensaryIds: [],
+      isActive: true,
+      lastLogin: new Date()
+    });
+    console.log(">>>>>>. user save >>>>>> "+JSON.stringify(user));
+    await user.save();
+
+    // Get token for the new user
+    const tokenResponse = await axios.post(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
+      grant_type: 'password',
+      username: email,
+      password: password,
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: process.env.AUTH0_CLIENT_SECRET,
+      audience: process.env.AUTH0_AUDIENCE,
+      scope: 'openid profile email'
+    });
+
+    res.status(201).json({
+      message: 'User created successfully',
+      access_token: tokenResponse.data.access_token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        auth0User : user.auth0Id,
+        dispensaryIds: user.dispensaryIds
+      }
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ 
+      message: 'Failed to create user account',
+      error: error.message 
     });
   }
 });
@@ -211,26 +212,49 @@ router.get('/me', validateJwt, async (req, res) => {
         return res.status(500).json({ message: 'Auth0 Management API client not available' });
       }
       
-      const auth0User = await auth0Management.getUser({ id: auth0UserId });
-      
-      // Extract roles from Auth0 user metadata or app_metadata
-      const userRoles = auth0User.app_metadata?.roles || [];
-      const dispensaryIds = auth0User.app_metadata?.dispensaryIds || [];
-      
-      // Create new user in our database
-      user = new User({
-        name: auth0User.name || auth0User.nickname,
-        email: auth0User.email,
-        auth0Id: auth0UserId,
-        role: userRoles.includes(ROLES.SUPER_ADMIN) ? 'super_admin' : 
-              userRoles.includes(ROLES.DISPENSARY_ADMIN) ? 'dispensary_admin' : 
-              'dispensary_staff',
-        dispensaryIds: dispensaryIds,
-        isActive: true,
-        lastLogin: new Date()
-      });
-      
-      await user.save();
+      try {
+        const auth0User = await auth0Management.users.get({ id: auth0UserId });
+        
+        // Fetch user roles
+        const roleResponse = await auth0Management.users.getRoles({ id: auth0UserId });
+        console.log('Raw role response:', JSON.stringify(roleResponse, null, 2));
+        
+        // Extract role names from the response
+        let roleNames = [];
+        if (roleResponse && roleResponse.data && Array.isArray(roleResponse.data)) {
+          roleNames = roleResponse.data.map(role => role.name);
+        }
+        console.log('Extracted role names:', roleNames);
+        
+        // Determine user role
+        let userRole = 'hospital_staff';
+        if (roleNames.includes('super_admin')) {
+          userRole = 'super_admin';
+        } else if (roleNames.includes('hospital_admin')) {
+          userRole = 'hospital_admin';
+        } else if (roleNames.includes('cpadmin')) {
+          userRole = 'super_admin'; // Map cpadmin to super_admin role
+        }
+        console.log(">>>>>>>>>>>> "+userRole);
+        
+        const dispensaryIds = auth0User.app_metadata?.dispensaryIds || [];
+        
+        // Create new user in our database
+        user = new User({
+          name: auth0User.name || auth0User.nickname,
+          email: auth0User.email,
+          auth0Id: auth0UserId,
+          role: userRole,
+          dispensaryIds: dispensaryIds,
+          isActive: true,
+          lastLogin: new Date()
+        });
+        
+        await user.save();
+      } catch (error) {
+        console.error('Failed to fetch user from Auth0:', error);
+        return res.status(500).json({ message: 'Failed to fetch user from Auth0' });
+      }
     } else {
       // Update last login time
       user.lastLogin = new Date();
@@ -260,10 +284,74 @@ router.get('/me', validateJwt, async (req, res) => {
 
 // Admin-only routes
 // Get all users (super_admin only)
-router.get('/users', validateJwt, requireRole([ROLES.SUPER_ADMIN]), async (req, res) => {
+router.get('/users', async (req, res) => {
   try {
+    // Get all users from our database
     const users = await User.find({}).select('-passwordHash');
-    res.status(200).json(users);
+    
+    // Get all dispensaries for mapping
+    const Dispensary = require('../models/Dispensary');
+    const dispensaries = await Dispensary.find({});
+    const dispensaryMap = new Map(dispensaries.map(d => [d._id.toString(), d]));
+
+    // Process each user to get their roles and dispensary assignments
+    
+    const processedUsers = await Promise.all(users.map(async (user) => {
+      try {
+        // Get user roles from Auth0
+        console.log(",....... rorl ...... "+user.auth0Id);
+        let roleNames = [];
+        if(user.auth0Id != undefined){
+          const roleResponse = await auth0Management.users.getRoles({ id: user.auth0Id });
+          console.log(">>>>>>>> role response >>>>>>>> "+JSON.stringify(roleResponse));
+          if (roleResponse && roleResponse.data && Array.isArray(roleResponse.data)) {
+            roleNames = roleResponse.data.map(role => role.name);
+          }
+        }
+        
+
+        // Process dispensary assignments
+        const dispensaryAssignments = user.dispensaryIds.map(dispensaryId => {
+          const dispensary = dispensaryMap.get(dispensaryId.toString());
+          console.log(">>>>>>.ddddd >>>> "+dispensary);
+          if (!dispensary) return null;
+
+          // Determine role for this dispensary
+          let role = 'hospital_staff';
+          if (roleNames.includes('super_admin')) {
+            role = 'hospital_admin';
+          } else if (roleNames.includes('hospital_admin')) {
+            role = 'hospital_admin';
+          }
+
+          return {
+            dispensaryId: dispensary._id.toString(),
+            dispensaryName: dispensary.name,
+            role
+          };
+        }).filter(Boolean); // Remove any null entries
+
+        return {
+          _id: user._id,
+          auth0Id: user.auth0Id,
+          name: user.name,
+          email: user.email,
+          isActive: user.isActive,
+          lastLogin: user.lastLogin,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+          dispensaryAssignments
+        };
+      } catch (error) {
+        console.error(`Error processing user ${user._id}:`, error);
+        return null;
+      }
+    }));
+
+    // Filter out any null entries from failed processing
+    const validUsers = processedUsers.filter(Boolean);
+
+    res.status(200).json(validUsers);
   } catch (error) {
     console.error('Get all users error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -271,12 +359,12 @@ router.get('/users', validateJwt, requireRole([ROLES.SUPER_ADMIN]), async (req, 
 });
 
 // Get users by dispensary (for dispensary admins)
-router.get('/users/dispensary/:dispensaryId', validateJwt, requireRole([ROLES.SUPER_ADMIN, ROLES.DISPENSARY_ADMIN]), async (req, res) => {
+router.get('/users/dispensary/:dispensaryId', validateJwt, requireRole([ROLES.SUPER_ADMIN, ROLES.hospital_admin]), async (req, res) => {
   try {
     const { dispensaryId } = req.params;
     
     // For dispensary admin, check if they have access to this dispensary
-    if (req.user.roles.includes(ROLES.DISPENSARY_ADMIN)) {
+    if (req.user.roles.includes(ROLES.hospital_admin)) {
       const user = await User.findOne({ auth0Id: req.user.id });
       if (!user.dispensaryIds.includes(dispensaryId)) {
         return res.status(403).json({ message: 'Access denied to this dispensary' });

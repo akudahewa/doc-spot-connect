@@ -1,9 +1,53 @@
-
 import axios from 'axios';
 import { Report, ReportType } from '../models';
 
-// API base URL
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+export interface Booking {
+  id: string;
+  timeSlot: string;
+  patientName: string;
+  patientPhone: string;
+  doctor: {
+    name: string;
+  };
+  dispensary: {
+    name: string;
+  };
+  status: string;
+  checkedInTime?: string;
+  completedTime?: string;
+}
+
+export interface DailyBookingSummary {
+  total: number;
+  completed: number;
+  cancelled: number;
+  noShow: number;
+  bookings: Booking[];
+}
+
+export interface MonthlySummary {
+  total: number;
+  completed: number;
+  cancelled: number;
+  noShow: number;
+  dailyStats: {
+    date: string;
+    total: number;
+    completed: number;
+    cancelled: number;
+    noShow: number;
+  }[];
+}
+
+export interface DoctorPerformance {
+  totalBookings: number;
+  completionRate: number;
+  cancellationRate: number;
+  averageConsultationTime: number;
+  bookings: Booking[];
+}
 
 export const ReportService = {
   // Get all reports
@@ -11,7 +55,7 @@ export const ReportService = {
     try {
       const token = localStorage.getItem('auth_token');
       
-      const response = await axios.get(`${API_BASE_URL}/reports`, {
+      const response = await axios.get(`${API_URL}/reports`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -27,7 +71,7 @@ export const ReportService = {
     try {
       const token = localStorage.getItem('auth_token');
       
-      const response = await axios.get(`${API_BASE_URL}/reports/dispensary/${dispensaryId}`, {
+      const response = await axios.get(`${API_URL}/reports/dispensary/${dispensaryId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -71,7 +115,7 @@ export const ReportService = {
       }
       
       const response = await axios.post(
-        `${API_BASE_URL}${endpoint}`,
+        `${API_URL}${endpoint}`,
         {
           title,
           parameters,
@@ -196,7 +240,7 @@ export const ReportService = {
       const token = localStorage.getItem('auth_token');
       
       const response = await axios.get(
-        `${API_BASE_URL}/reports/session/${doctorId}/${dispensaryId}/${date}`, 
+        `${API_URL}/reports/session/${doctorId}/${dispensaryId}/${date}`, 
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -207,6 +251,58 @@ export const ReportService = {
       console.error('Error fetching session report:', error);
       // Return empty array for now
       return [];
+    }
+  },
+
+  // Get daily bookings report
+  getDailyBookings: async (date: Date): Promise<DailyBookingSummary> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const formattedDate = date.toISOString().split('T')[0];
+      const response = await axios.get(
+        `${API_URL}/reports/daily-bookings?date=${formattedDate}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching daily bookings:', error);
+      throw new Error('Failed to fetch daily bookings report');
+    }
+  },
+
+  // Get monthly summary report
+  getMonthlySummary: async (month: number, year: number): Promise<MonthlySummary> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/reports/monthly-summary?month=${month}&year=${year}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching monthly summary:', error);
+      throw new Error('Failed to fetch monthly summary report');
+    }
+  },
+
+  // Get doctor performance report
+  getDoctorPerformance: async (
+    doctorId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<DoctorPerformance> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const formattedStartDate = startDate.toISOString().split('T')[0];
+      const formattedEndDate = endDate.toISOString().split('T')[0];
+      const response = await axios.get(
+        `${API_URL}/reports/doctor-performance?doctorId=${doctorId}&startDate=${formattedStartDate}&endDate=${formattedEndDate}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching doctor performance:', error);
+      throw new Error('Failed to fetch doctor performance report');
     }
   }
 };
