@@ -12,6 +12,12 @@ export interface BookingCreateParams {
   patientPhone: string;
   patientEmail?: string;
   symptoms?: string;
+  fees?: {
+    doctorFee: number;
+    dispensaryFee: number;
+    bookingCommission: number;
+    totalFee: number;
+  };
 }
 
 export interface BookingSummary {
@@ -324,5 +330,14 @@ export const BookingService = {
       console.error('Error fetching available time slots:', error);
       throw new Error('Failed to fetch available time slots');
     }
+  },
+
+  fetchDoctorDispensaryFees: async (doctorId: string, dispensaryId: string) => {
+    const token = localStorage.getItem('auth_token');
+    const response = await axios.get(
+      `${API_URL}/doctor-dispensaries/fees/${doctorId}/${dispensaryId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return response.data;
   }
 };

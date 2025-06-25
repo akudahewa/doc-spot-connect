@@ -67,6 +67,12 @@ const bookingSchema = new mongoose.Schema({
   patientEmail: {
     type: String
   },
+  fees: {
+    doctorFee: { type: Number, default: 0 },
+    dispensaryFee: { type: Number, default: 0 },
+    bookingCommission: { type: Number, default: 0 },
+    totalFee: { type: Number, default: 0 }
+  },
   transactionId: {
     type: String,
     required: true,

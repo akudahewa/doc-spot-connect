@@ -82,7 +82,7 @@ const Header = () => {
           ) : (
             <>
               <nav className="flex items-center space-x-8">
-                <Link to="/" className="text-gray-700 hover:text-medical-600 font-medium">
+                <Link to="/admin/dashboard" className="text-gray-700 hover:text-medical-600 font-medium">
                   Home
                 </Link>
                 <Link to="/doctors" className="text-gray-700 hover:text-medical-600 font-medium">

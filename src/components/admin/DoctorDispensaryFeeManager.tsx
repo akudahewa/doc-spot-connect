@@ -1,220 +1,283 @@
-
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
-import { DoctorService, DispensaryService, DoctorDispensaryService } from '@/api/services';
-import { Doctor, Dispensary } from '@/api/models';
-import { DoctorDispensaryFee } from '@/api/services/DoctorDispensaryService';
-import { Plus } from 'lucide-react';
+import { TimeSlotService, TimeSlotFees, DoctorDispensaryFee, Dispensary } from '@/api/services/TimeSlotService';
+import { toast } from 'react-toastify';
+import { Edit, Trash2 } from 'lucide-react';
 
 const DoctorDispensaryFeeManager: React.FC = () => {
-  const { toast } = useToast();
-  
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [fees, setFees] = useState<DoctorDispensaryFee[]>([]);
+  const [selectedDispensaryId, setSelectedDispensaryId] = useState<string>('');
   const [dispensaries, setDispensaries] = useState<Dispensary[]>([]);
-  const [feeConfigs, setFeeConfigs] = useState<DoctorDispensaryFee[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
-  // Form state
-  const [selectedDoctor, setSelectedDoctor] = useState('');
-  const [selectedDispensary, setSelectedDispensary] = useState('');
-  const [doctorFee, setDoctorFee] = useState('');
-  const [dispensaryFee, setDispensaryFee] = useState('');
-  const [bookingCommission, setBookingCommission] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedFee, setSelectedFee] = useState<{
+    doctorId: string;
+    dispensaryId: string;
+    fees: TimeSlotFees;
+  } | null>(null);
 
+  // Fetch dispensaries on component mount
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchDispensaries = async () => {
       try {
-        setIsLoading(true);
-        const [doctorsData, dispensariesData] = await Promise.all([
-          DoctorService.getAllDoctors(),
-          DispensaryService.getAllDispensaries()
-        ]);
-        setDoctors(doctorsData);
-        setDispensaries(dispensariesData);
+        const dispensaries = await TimeSlotService.getAllDispensaries();
+        setDispensaries(dispensaries);
       } catch (error) {
-        console.error('Error fetching initial data:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load doctors and dispensaries',
-          variant: 'destructive'
-        });
+        console.error('Error fetching dispensaries:', error);
+        toast.error('Failed to fetch dispensaries');
+      }
+    };
+    fetchDispensaries();
+  }, []);
+
+  // Fetch fees when dispensary is selected
+  useEffect(() => {
+    const fetchFees = async () => {
+      if (!selectedDispensaryId) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        console.log('Fetching fees for dispensary:', selectedDispensaryId);
+        const doctorDispensaryFees = await TimeSlotService.getDoctorDispensaryFees(selectedDispensaryId);
+        console.log('Received fees:', doctorDispensaryFees);
+        setFees(doctorDispensaryFees);
+      } catch (error) {
+        console.error('Error fetching fees:', error);
+        setError('Failed to fetch fees');
+        toast.error('Failed to fetch fees');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchInitialData();
-  }, [toast]);
+    fetchFees();
+  }, [selectedDispensaryId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedDoctor || !selectedDispensary || !doctorFee || !dispensaryFee || !bookingCommission) {
-      toast({
-        title: 'Missing Information',
-        description: 'Please fill in all required fields',
-        variant: 'destructive'
-      });
-      return;
-    }
+  const handleEditFees = (fee: DoctorDispensaryFee) => {
+    setSelectedFee({
+      doctorId: fee.doctorId,
+      dispensaryId: fee.dispensaryId,
+      fees: {
+        doctorFee: fee.doctorFee,
+        dispensaryFee: fee.dispensaryFee,
+        bookingCommission: fee.bookingCommission
+      }
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveFees = async (updatedFees: TimeSlotFees) => {
+    if (!selectedFee) return;
 
     try {
-      setIsLoading(true);
-      await DoctorDispensaryService.assignFees({
-        doctorId: selectedDoctor,
-        dispensaryId: selectedDispensary,
-        doctorFee: Number(doctorFee),
-        dispensaryFee: Number(dispensaryFee),
-        bookingCommission: Number(bookingCommission)
-      });
-      
-      toast({
-        title: 'Success',
-        description: 'Fee configuration saved successfully'
-      });
-      
-      // Reset form
-      setSelectedDoctor('');
-      setSelectedDispensary('');
-      setDoctorFee('');
-      setDispensaryFee('');
-      setBookingCommission('');
-      setIsDialogOpen(false);
-      
-      // Refresh fee configs if needed
-      // You can add logic here to refresh the list
-      
+      await TimeSlotService.updateDoctorDispensaryFees(
+        selectedFee.doctorId,
+        selectedFee.dispensaryId,
+        updatedFees
+      );
+      toast.success('Fees updated successfully');
+      setIsEditDialogOpen(false);
+      // Refresh the fees list
+      const updatedFeesList = await TimeSlotService.getDoctorDispensaryFees(selectedDispensaryId);
+      setFees(updatedFeesList);
     } catch (error) {
-      console.error('Error saving fee configuration:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save fee configuration',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsLoading(false);
+      console.error('Error updating fees:', error);
+      toast.error('Failed to update fees');
+    }
+  };
+
+  const handleDeleteFees = async (doctorId: string, dispensaryId: string) => {
+    if (!window.confirm('Are you sure you want to reset these fees?')) return;
+
+    try {
+      await TimeSlotService.deleteDoctorDispensaryFees(doctorId, dispensaryId);
+      toast.success('Fees reset successfully');
+      // Refresh the fees list
+      const updatedFeesList = await TimeSlotService.getDoctorDispensaryFees(selectedDispensaryId);
+      setFees(updatedFeesList);
+    } catch (error) {
+      console.error('Error deleting fees:', error);
+      toast.error('Failed to reset fees');
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Doctor-Dispensary Fee Management</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Fee Configuration
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add Fee Configuration</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="doctor">Doctor</Label>
-                <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Doctor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {doctors.map((doctor) => (
-                      <SelectItem key={doctor.id} value={doctor.id}>
-                        {doctor.name} - {doctor.specialization}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Fee Configurations</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-6">
+          <Select
+            value={selectedDispensaryId}
+            onValueChange={(value) => {
+              console.log('Dispensary selected:', value);
+              setSelectedDispensaryId(value);
+            }}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select Dispensary" />
+            </SelectTrigger>
+            <SelectContent>
+              {dispensaries.map((dispensary) => (
+                <SelectItem key={dispensary._id} value={dispensary._id}>
+                  {dispensary.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="dispensary">Dispensary</Label>
-                <Select value={selectedDispensary} onValueChange={setSelectedDispensary}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Dispensary" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dispensaries.map((dispensary) => (
-                      <SelectItem key={dispensary.id} value={dispensary.id}>
-                        {dispensary.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        {loading && <p>Loading...</p>}
+        {error && <p className="text-red-500">{error}</p>}
+        
+        {!loading && !error && fees.length === 0 && (
+          <p className="text-muted-foreground">
+            No fees found for this dispensary. Please select a different dispensary or add fees.
+          </p>
+        )}
 
-              <div className="space-y-2">
-                <Label htmlFor="doctorFee">Doctor Fee</Label>
+        {fees.length > 0 && (
+          <div className="rounded-md border">
+            <Table className="table-fixed">
+              <TableHead>
+                <TableRow>
+                  <TableCell className="w-[20%] font-semibold text-gray-900 align-middle py-3 px-4">Doctor</TableCell>
+                  <TableCell className="w-[20%] font-semibold text-gray-900 align-middle py-3 px-4">Dispensary</TableCell>
+                  <TableCell className="w-[15%] font-semibold text-gray-900 align-middle py-3 px-4 text-right">Doctor Fee</TableCell>
+                  <TableCell className="w-[15%] font-semibold text-gray-900 align-middle py-3 px-4 text-right">Dispensary Fee</TableCell>
+                  <TableCell className="w-[15%] font-semibold text-gray-900 align-middle py-3 px-4 text-right">Booking Commission</TableCell>
+                  <TableCell className="w-[10%] font-semibold text-gray-900 align-middle py-3 px-4">Last Updated</TableCell>
+                  <TableCell className="w-[5%] font-semibold text-gray-900 align-middle py-3 px-4 text-center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {fees.map((fee) => (
+                  <TableRow key={fee._id} className="hover:bg-gray-50">
+                    <TableCell className="w-[20%] font-normal text-gray-700 align-middle py-3 px-4">{fee.doctorName}</TableCell>
+                    <TableCell className="w-[20%] font-normal text-gray-700 align-middle py-3 px-4">{fee.dispensaryName}</TableCell>
+                    <TableCell className="w-[15%] font-normal text-gray-700 align-middle py-3 px-4 text-right">${fee.doctorFee || 0}</TableCell>
+                    <TableCell className="w-[15%] font-normal text-gray-700 align-middle py-3 px-4 text-right">${fee.dispensaryFee || 0}</TableCell>
+                    <TableCell className="w-[15%] font-normal text-gray-700 align-middle py-3 px-4 text-right">${fee.bookingCommission || 0}</TableCell>
+                    <TableCell className="w-[10%] font-normal text-gray-700 align-middle py-3 px-4">{new Date(fee.updatedAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="w-[5%] align-middle py-3 px-4 text-center">
+                      <div className="flex justify-center items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditFees(fee)}
+                          className="h-8 w-8"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteFees(fee.doctorId, fee.dispensaryId)}
+                          className="h-8 w-8 text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Fees</DialogTitle>
+          </DialogHeader>
+          {selectedFee && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="doctorFee" className="text-right">
+                  Doctor Fee
+                </Label>
                 <Input
                   id="doctorFee"
                   type="number"
-                  value={doctorFee}
-                  onChange={(e) => setDoctorFee(e.target.value)}
-                  placeholder="Enter doctor fee"
-                  min="0"
-                  step="0.01"
+                  defaultValue={selectedFee.fees.doctorFee}
+                  className="col-span-3"
+                  onChange={(e) => {
+                    setSelectedFee({
+                      ...selectedFee,
+                      fees: {
+                        ...selectedFee.fees,
+                        doctorFee: Number(e.target.value)
+                      }
+                    });
+                  }}
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dispensaryFee">Dispensary Fee</Label>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="dispensaryFee" className="text-right">
+                  Dispensary Fee
+                </Label>
                 <Input
                   id="dispensaryFee"
                   type="number"
-                  value={dispensaryFee}
-                  onChange={(e) => setDispensaryFee(e.target.value)}
-                  placeholder="Enter dispensary fee"
-                  min="0"
-                  step="0.01"
+                  defaultValue={selectedFee.fees.dispensaryFee}
+                  className="col-span-3"
+                  onChange={(e) => {
+                    setSelectedFee({
+                      ...selectedFee,
+                      fees: {
+                        ...selectedFee.fees,
+                        dispensaryFee: Number(e.target.value)
+                      }
+                    });
+                  }}
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bookingCommission">Booking Commission</Label>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="bookingCommission" className="text-right">
+                  Booking Commission
+                </Label>
                 <Input
                   id="bookingCommission"
                   type="number"
-                  value={bookingCommission}
-                  onChange={(e) => setBookingCommission(e.target.value)}
-                  placeholder="Enter booking commission"
-                  min="0"
-                  step="0.01"
+                  defaultValue={selectedFee.fees.bookingCommission}
+                  className="col-span-3"
+                  onChange={(e) => {
+                    setSelectedFee({
+                      ...selectedFee,
+                      fees: {
+                        ...selectedFee.fees,
+                        bookingCommission: Number(e.target.value)
+                      }
+                    });
+                  }}
                 />
               </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Saving...' : 'Save Configuration'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Fee Configurations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Fee configurations will be displayed here. You can view and manage doctor-dispensary fee combinations.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => selectedFee && handleSaveFees(selectedFee.fees)}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 };
 

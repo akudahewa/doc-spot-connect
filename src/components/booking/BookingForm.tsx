@@ -37,6 +37,9 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   
+  // Fees state
+  const [fees, setFees] = useState<any>(null);
+  
   // Load initial data
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -152,7 +155,7 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
     fetchAvailability();
   }, [selectedDoctor, selectedDispensary, selectedDate]);
   
-  const handleBooking = async () => {
+  const handleBooking = async (feesObj?: any) => {
     if (!selectedDoctor || !selectedDispensary || !selectedDate || !name || !phone || 
         !availability?.available || !availability.slots?.length) {
       toast({
@@ -175,6 +178,7 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
         doctorId: selectedDoctor,
         dispensaryId: selectedDispensary,
         bookingDate: selectedDate,
+        fees: feesObj || fees
       });
       
       // Navigate to booking summary page
@@ -231,7 +235,9 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
                   setSymptoms={setSymptoms}
                   isLoading={isLoading}
                   onBack={() => setCurrentStep(0)}
-                  onConfirm={handleBooking}
+                  onConfirm={(feesObj) => handleBooking(feesObj)}
+                  doctorId={selectedDoctor}
+                  dispensaryId={selectedDispensary}
                 />
               )}
             </div>

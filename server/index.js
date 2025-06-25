@@ -42,7 +42,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/user-dispensary', userDispensary);
 app.use('/api/users', userRoutes);
-app.use('/api/doctor-dispensary', doctorDispensaryRoutes);
+app.use('/api/doctor-dispensaries', doctorDispensaryRoutes);
 
 // Base route
 app.get('/api', (req, res) => {

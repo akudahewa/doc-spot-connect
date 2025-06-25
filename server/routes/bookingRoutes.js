@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const Booking = require('../models/Booking');
@@ -81,7 +80,8 @@ router.post('/', async (req, res) => {
       patientName,
       patientPhone,
       patientEmail,
-      symptoms
+      symptoms,
+      fees
     } = req.body;
 
     console.log("Received booking request:", req.body);
@@ -237,7 +237,8 @@ router.post('/', async (req, res) => {
       patientName,
       patientPhone,
       patientEmail,
-      transactionId
+      transactionId,
+      fees
     });
     
     await booking.save();

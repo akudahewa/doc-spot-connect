@@ -3,6 +3,7 @@ const router = express.Router();
 const TimeSlotConfig = require('../models/TimeSlotConfig');
 const AbsentTimeSlot = require('../models/AbsentTimeSlot');
 const mongoose = require('mongoose');
+const { validateJwt, requireRole,ROLES } = require('../middleware/authMiddleware');
 
 // Get time slots for a doctor at a specific dispensary
 router.get('/config/doctor/:doctorId/dispensary/:dispensaryId', async (req, res) => {
@@ -287,6 +288,81 @@ router.get('/available/:doctorId/:dispensaryId/:date', async (req, res) => {
       message: 'Error fetching available time slots',
       error: error.message
     });
+  }
+});
+
+// Get fees for a time slot
+router.get('/fees/:timeSlotId', async (req, res) => {
+  try {
+    const { timeSlotId } = req.params;
+    const timeSlot = await TimeSlotConfig.findById(timeSlotId);
+    
+    if (!timeSlot) {
+      return res.status(404).json({ message: 'Time slot not found' });
+    }
+
+    res.json({
+      doctorFee: timeSlot.doctorFee || 0,
+      dispensaryFee: timeSlot.dispensaryFee || 0,
+      bookingCommission: timeSlot.bookingCommission || 0
+    });
+  } catch (error) {
+    console.error('Error fetching time slot fees:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update fees for a time slot
+router.put('/fees/:timeSlotId', requireRole([ROLES.SUPER_ADMIN, ROLES.hospital_admin]), async (req, res) => {
+  try {
+    const { timeSlotId } = req.params;
+    const { doctorFee, dispensaryFee, bookingCommission } = req.body;
+
+    const timeSlot = await TimeSlotConfig.findById(timeSlotId);
+    if (!timeSlot) {
+      return res.status(404).json({ message: 'Time slot not found' });
+    }
+
+    // Update fees
+    timeSlot.doctorFee = doctorFee;
+    timeSlot.dispensaryFee = dispensaryFee;
+    timeSlot.bookingCommission = bookingCommission;
+    await timeSlot.save();
+
+    res.json({
+      message: 'Fees updated successfully',
+      fees: {
+        doctorFee: timeSlot.doctorFee,
+        dispensaryFee: timeSlot.dispensaryFee,
+        bookingCommission: timeSlot.bookingCommission
+      }
+    });
+  } catch (error) {
+    console.error('Error updating time slot fees:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete fees for a time slot
+router.delete('/fees/:timeSlotId', requireRole([ROLES.SUPER_ADMIN, ROLES.hospital_admin]), async (req, res) => {
+  try {
+    const { timeSlotId } = req.params;
+    const timeSlot = await TimeSlotConfig.findById(timeSlotId);
+    
+    if (!timeSlot) {
+      return res.status(404).json({ message: 'Time slot not found' });
+    }
+
+    // Reset fees to default values
+    timeSlot.doctorFee = 0;
+    timeSlot.dispensaryFee = 0;
+    timeSlot.bookingCommission = 0;
+    await timeSlot.save();
+
+    res.json({ message: 'Fees reset successfully' });
+  } catch (error) {
+    console.error('Error resetting time slot fees:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

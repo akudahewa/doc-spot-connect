@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { TimeSlotConfig, AbsentTimeSlot } from '@/api/models';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -22,6 +21,59 @@ export interface TimeSlotAvailability {
     maxPatients: number;
   };
   slots?: AvailableTimeSlot[];
+}
+
+export interface TimeSlotFees {
+  doctorFee: number;
+  dispensaryFee: number;
+  bookingCommission: number;
+}
+
+export interface TimeSlotConfig {
+  id: string;
+  doctorId: string;
+  doctorName: string;
+  dispensaryId: string;
+  dispensaryName: string;
+  minutesPerPatient: number;
+  doctorFee: number;
+  dispensaryFee: number;
+  bookingCommission: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Dispensary {
+  _id: string;
+  name: string;
+  address: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AbsentTimeSlot {
+  id: string;
+  doctorId: string;
+  dispensaryId: string;
+  date: Date;
+  isModifiedSession: boolean;
+  maxPatients: number;
+  minutesPerPatient: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DoctorDispensaryFee {
+  _id: string;
+  doctorId: string;
+  doctorName: string;
+  dispensaryId: string;
+  dispensaryName: string;
+  doctorFee: number;
+  dispensaryFee: number;
+  bookingCommission: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const TimeSlotService = {
@@ -248,5 +300,149 @@ export const TimeSlotService = {
       console.error('Error fetching available time slots:', error);
       throw new Error('Failed to fetch available time slots');
     }
-  }
+  },
+
+  // Get fees for a time slot
+  getTimeSlotFees: async (timeSlotId: string): Promise<TimeSlotFees> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/timeslots/fees/${timeSlotId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching time slot fees:', error);
+      throw new Error('Failed to fetch time slot fees');
+    }
+  },
+
+  // Update fees for a time slot
+  updateTimeSlotFees: async (
+    timeSlotId: string,
+    fees: TimeSlotFees
+  ): Promise<TimeSlotFees> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.put(
+        `${API_URL}/timeslots/fees/${timeSlotId}`,
+        fees,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data.fees;
+    } catch (error) {
+      console.error('Error updating time slot fees:', error);
+      throw new Error('Failed to update time slot fees');
+    }
+  },
+
+  // Delete/reset fees for a time slot
+  deleteTimeSlotFees: async (timeSlotId: string): Promise<void> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(
+        `${API_URL}/timeslots/fees/${timeSlotId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (error) {
+      console.error('Error deleting time slot fees:', error);
+      throw new Error('Failed to delete time slot fees');
+    }
+  },
+
+  // Get all dispensaries
+  getAllDispensaries: async (): Promise<Dispensary[]> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(`${API_URL}/dispensaries`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data.map((dispensary: any) => ({
+        ...dispensary,
+        _id: dispensary._id,
+        name: dispensary.name,
+        address: dispensary.address,
+        createdAt: new Date(dispensary.createdAt),
+        updatedAt: new Date(dispensary.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching dispensaries:', error);
+      throw new Error('Failed to fetch dispensaries');
+    }
+  },
+
+  // Get all doctor-dispensary fees
+  getDoctorDispensaryFees: async (dispensaryId: string): Promise<DoctorDispensaryFee[]> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.get(
+        `${API_URL}/doctor-dispensaries/fees/${dispensaryId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return response.data.map((fee: any) => ({
+        ...fee,
+        _id: fee._id,
+        doctorId: fee.doctorId,
+        doctorName: fee.doctorName,
+        dispensaryId: fee.dispensaryId,
+        dispensaryName: fee.dispensaryName,
+        doctorFee: fee.doctorFee || 0,
+        dispensaryFee: fee.dispensaryFee || 0,
+        bookingCommission: fee.bookingCommission || 0,
+        createdAt: new Date(fee.createdAt),
+        updatedAt: new Date(fee.updatedAt)
+      }));
+    } catch (error) {
+      console.error('Error fetching doctor-dispensary fees:', error);
+      throw new Error('Failed to fetch doctor-dispensary fees');
+    }
+  },
+
+  // Update doctor-dispensary fees
+  updateDoctorDispensaryFees: async (
+    doctorId: string,
+    dispensaryId: string,
+    fees: TimeSlotFees
+  ): Promise<DoctorDispensaryFee> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.put(
+        `${API_URL}/doctor-dispensaries/fees/${doctorId}/${dispensaryId}`,
+        fees,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      return {
+        ...response.data,
+        _id: response.data._id,
+        doctorId: response.data.doctorId,
+        doctorName: response.data.doctorName,
+        dispensaryId: response.data.dispensaryId,
+        dispensaryName: response.data.dispensaryName,
+        doctorFee: response.data.doctorFee || 0,
+        dispensaryFee: response.data.dispensaryFee || 0,
+        bookingCommission: response.data.bookingCommission || 0,
+        createdAt: new Date(response.data.createdAt),
+        updatedAt: new Date(response.data.updatedAt)
+      };
+    } catch (error) {
+      console.error('Error updating doctor-dispensary fees:', error);
+      throw new Error('Failed to update doctor-dispensary fees');
+    }
+  },
+
+  // Delete/reset doctor-dispensary fees
+  deleteDoctorDispensaryFees: async (doctorId: string, dispensaryId: string): Promise<void> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      await axios.delete(
+        `${API_URL}/doctor-dispensaries/fees/${doctorId}/${dispensaryId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (error) {
+      console.error('Error deleting doctor-dispensary fees:', error);
+      throw new Error('Failed to delete doctor-dispensary fees');
+    }
+  },
 };

@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 
 const doctorDispensarySchema = new mongoose.Schema({
@@ -14,18 +13,15 @@ const doctorDispensarySchema = new mongoose.Schema({
   },
   doctorFee: {
     type: Number,
-    required: true,
-    min: 0
+    default: 0
   },
   dispensaryFee: {
     type: Number,
-    required: true,
-    min: 0
+    default: 0
   },
   bookingCommission: {
     type: Number,
-    required: true,
-    min: 0
+    default: 0
   },
   isActive: {
     type: Boolean,
@@ -35,7 +31,9 @@ const doctorDispensarySchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Ensure unique combination of doctor and dispensary
+// Create a compound index to ensure unique doctor-dispensary combinations
 doctorDispensarySchema.index({ doctorId: 1, dispensaryId: 1 }, { unique: true });
 
-module.exports = mongoose.model('DoctorDispensary', doctorDispensarySchema);
+const DoctorDispensary = mongoose.model('DoctorDispensary', doctorDispensarySchema);
+
+module.exports = DoctorDispensary;
