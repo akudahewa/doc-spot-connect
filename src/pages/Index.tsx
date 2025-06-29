@@ -137,7 +137,7 @@ const Index = () => {
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between mb-10">
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Our Doctors</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Our Doctor</h2>
                 <p className="text-gray-600">Meet our team of specialists</p>
               </div>
               <Button asChild variant="outline">
