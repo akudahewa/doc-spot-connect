@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DoctorService, DispensaryService } from '@/api/services';
@@ -24,13 +23,25 @@ const AdminTimeSlots = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [doctorsData, dispensariesData] = await Promise.all([
-          DoctorService.getAllDoctors(),
-          DispensaryService.getAllDispensaries()
-        ]);
-        
-        setDoctors(doctorsData);
-        setDispensaries(dispensariesData);
+        const userStr = localStorage.getItem('current_user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        if (user?.dispensaryIds && user.dispensaryIds.length > 0) {
+          console.log(user.dispensaryIds);
+          const [doctorsData, dispensariesData] = await Promise.all([
+            DoctorService.getDoctorsByDispensaryIds(user.dispensaryIds),
+            DispensaryService.getDispensariesByIds(user.dispensaryIds)
+          ]);
+          console.log("::::::::: "+JSON.stringify(doctorsData));
+          setDoctors(doctorsData);
+          setDispensaries(dispensariesData);
+        } else {
+          const [doctorsData, dispensariesData] = await Promise.all([
+            DoctorService.getAllDoctors(),
+            DispensaryService.getAllDispensaries()
+          ]);
+          setDoctors(doctorsData);
+          setDispensaries(dispensariesData);
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         toast({

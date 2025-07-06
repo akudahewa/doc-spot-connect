@@ -45,6 +45,22 @@ router.get('/dispensary/:dispensaryId', async (req, res) => {
   }
 });
 
+// POST /api/doctors/by-dispensaries
+router.post('/by-dispensaries', async (req, res) => {
+  try {
+    const { dispensaryIds } = req.body; // expects { dispensaryIds: [id1, id2, ...] }
+    if (!Array.isArray(dispensaryIds) || dispensaryIds.length === 0) {
+      return res.status(400).json({ message: 'No dispensary IDs provided' });
+    }
+    // Find doctors who are associated with any of the given dispensary IDs
+    const doctors = await Doctor.find({ dispensaries: { $in: dispensaryIds } });
+    res.json(doctors);
+  } catch (error) {
+    console.error('Error fetching doctors by dispensary IDs:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Create a new doctor
 router.post('/', async (req, res) => {
   try {

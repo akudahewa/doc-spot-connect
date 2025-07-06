@@ -23,6 +23,7 @@ import DailyBookings from '@/pages/reports/DailyBookings';
 import MonthlySummary from '@/pages/reports/MonthlySummary';
 import DoctorPerformance from '@/pages/reports/DoctorPerformance';
 import UserDispensaryAssignment from '@/pages/admin/UserDispensaryAssignment';
+import DoctorDispensaryFeeManager from './components/admin/DoctorDispensaryFeeManager';
 import Signup from './pages/Signup';
 
 const App = () => {
@@ -51,6 +52,7 @@ const App = () => {
         <Route path="/admin/dispensaries/edit/:id" element={<EditDispensary />} />
         <Route path="/admin/dispensaries/view/:id" element={<ViewDispensary />} />
         <Route path="/admin/user-dispensary" element={<UserDispensaryAssignment />} />
+        <Route path='/admin/fees' element={<DoctorDispensaryFeeManager/>}/>
         
         {/* Specific Routes */}
         <Route path="/doctor/:doctorId/dispensary/:dispensaryId/time-slots" element={<TimeSlotManagement />} />

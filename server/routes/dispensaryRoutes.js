@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const Dispensary = require('../models/Dispensary');
@@ -97,6 +96,21 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('Error creating dispensary:', error);
     res.status(500).json({ message: 'Error creating dispensary', error: error.message });
+  }
+});
+
+// POST /api/dispensaries/by-ids
+router.post('/by-ids', async (req, res) => {
+  try {
+    const { ids } = req.body; // expects { ids: [id1, id2, ...] }
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No dispensary IDs provided' });
+    }
+    const dispensaries = await Dispensary.find({ _id: { $in: ids } });
+    res.json(dispensaries);
+  } catch (error) {
+    console.error('Error fetching dispensaries by IDs:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

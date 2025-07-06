@@ -45,14 +45,35 @@ const BookingForm = ({ initialDoctorId, initialDispensaryId }: BookingFormProps)
     const fetchInitialData = async () => {
       try {
         setIsLoading(true);
+        const userStr = localStorage.getItem('current_user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        console.log("NNNNN");
+        console.log(user);
         
+        if (user?.dispensaryIds && user.dispensaryIds.length > 0) {
+          console.log(user.dispensaryIds);
+          const [doctorsData, dispensariesData] = await Promise.all([
+            DoctorService.getDoctorsByDispensaryIds(user.dispensaryIds),
+            DispensaryService.getDispensariesByIds(user.dispensaryIds)
+          ]);
+          console.log("::::::::: "+JSON.stringify(doctorsData));
+          setDoctors(doctorsData);
+          setDispensaries(dispensariesData);
+        } else {
+          const [doctorsData, dispensariesData] = await Promise.all([
+            DoctorService.getAllDoctors(),
+            DispensaryService.getAllDispensaries()
+          ]);
+          setDoctors(doctorsData);
+          setDispensaries(dispensariesData);
+        }
         // Fetch all doctors
-        const allDoctors = await DoctorService.getAllDoctors();
-        setDoctors(allDoctors);
+        // const allDoctors = await DoctorService.getAllDoctors();
+        // setDoctors(allDoctors);
         
         // Fetch all dispensaries
-        const allDispensaries = await DispensaryService.getAllDispensaries();
-        setDispensaries(allDispensaries);
+        // const allDispensaries = await DispensaryService.getAllDispensaries();
+        // setDispensaries(allDispensaries);
         
         // Set initial selections if provided
         if (initialDoctorId) {

@@ -88,6 +88,26 @@ router.post('/login', async (req, res) => {
     } else if (roleNames.includes('cpadmin')) {
       userRole = 'super_admin'; 
     }
+
+    console.log("user role is "+userRole);
+    let roleIds = [];
+    if (roleResponse && roleResponse.data && Array.isArray(roleResponse.data)) {
+      roleIds = roleResponse.data.map(role => role.id);
+    }
+
+    let rolePermissions = [];
+    for (const roleId of roleIds) {
+      const permResponse = await auth0Management.roles.getPermissions({ id: roleId });
+      if (permResponse && permResponse.data && Array.isArray(permResponse.data)) {
+        rolePermissions.push(...permResponse.data.map(perm => perm.permission_name));
+      }
+    }
+    console.log("permissions --->"+rolePermissions);
+    rolePermissions = [...new Set(rolePermissions)];
+
+    console.log("final role permissions :::: "+rolePermissions);
+
+
     let user = await User.findOne({ auth0Id: auth0User.sub });
     res.json({
       access_token: tokenResponse.data.access_token,
@@ -97,6 +117,8 @@ router.post('/login', async (req, res) => {
         name: user.name,
         email: user.email,
         role: userRole,
+        dispensaryIds: user.dispensaryIds,
+        permissions: rolePermissions
       }
     });
   } catch (error) {
@@ -266,6 +288,39 @@ router.get('/me', validateJwt, async (req, res) => {
     const decodedToken = jwt.decode(token);
     const permissions = decodedToken[`${process.env.AUTH0_AUDIENCE}/permissions`] || [];
     
+    const roleResponse = await auth0Management.users.getRoles({ id: auth0User.sub });
+    let roleNames = [];
+    if (roleResponse && roleResponse.data && Array.isArray(roleResponse.data)) {
+      roleNames = roleResponse.data.map(role => role.name);
+    }
+    console.log('Logged user has role :', JSON.stringify(roleResponse, null, 2));
+    let userRole = 'hospital_staff';
+    if (roleNames.includes('super_admin')) {
+      userRole = 'super_admin';
+    } else if (roleNames.includes('hospital_admin')) {
+      userRole = 'hospital_admin';
+    } else if (roleNames.includes('cpadmin')) {
+      userRole = 'super_admin'; 
+    }
+
+    console.log("user role is "+userRole);
+    let roleIds = [];
+    if (roleResponse && roleResponse.data && Array.isArray(roleResponse.data)) {
+      roleIds = roleResponse.data.map(role => role.id);
+    }
+
+    let rolePermissions = [];
+    for (const roleId of roleIds) {
+      const permResponse = await auth0Management.roles.getPermissions({ id: roleId });
+      if (permResponse && permResponse.data && Array.isArray(permResponse.data)) {
+        rolePermissions.push(...permResponse.data.map(perm => perm.permission_name));
+      }
+    }
+    console.log("permissions --->"+rolePermissions);
+    rolePermissions = [...new Set(rolePermissions)];
+
+    console.log("final role permissions :::: "+rolePermissions);
+
     res.status(200).json({
       id: user._id,
       auth0Id: user.auth0Id,
@@ -273,7 +328,7 @@ router.get('/me', validateJwt, async (req, res) => {
       email: user.email,
       role: user.role,
       dispensaryIds: user.dispensaryIds || [],
-      permissions: permissions,
+      permissions: [...new Set([...permissions, ...rolePermissions])],
       lastLogin: user.lastLogin
     });
   } catch (error) {

@@ -44,12 +44,10 @@ const Login = () => {
       const { access_token, user } = response.data;
       localStorage.setItem('auth_token', access_token);
       localStorage.setItem('current_user', JSON.stringify(user));
-      console.log("SddddSSSSSSSS");
       toast({
         title: 'Login Successful',
         description: 'Welcome back!'
       });
-      console.log("SSSSSSSSS");
       navigate('/admin/dashboard', { replace: true });
     } catch (error) {
       console.error('Login failed:', error);

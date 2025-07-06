@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import { Dispensary } from '../models';
+import { Dispensary, Doctor } from '../models';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -46,6 +46,24 @@ export const DispensaryService = {
       throw new Error('Failed to fetch dispensary');
     }
   },
+
+  getDispensariesByIds: async (ids: string[]):Promise<Dispensary[]> => {
+    const token = localStorage.getItem('auth_token');
+    const response = await axios.post(
+      `${API_URL}/dispensaries/by-ids`,
+      { ids },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    console.log(response.data);
+    if (!response.data) return null;
+      
+    return response.data.map((dispensary: any) => ({
+      ...dispensary,
+      id: dispensary._id,
+    }));
+  },
+
+  
 
   // Get dispensaries by doctor ID
   getDispensariesByDoctorId: async (doctorId: string): Promise<Dispensary[]> => {

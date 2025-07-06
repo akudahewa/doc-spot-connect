@@ -67,6 +67,24 @@ export const DoctorService = {
     }
   },
 
+  getDoctorsByDispensaryIds: async (dispensaryIds: string[]): Promise<Doctor[]> => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.post(
+        `${API_URL}/doctors/by-dispensaries`,
+        { dispensaryIds },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data.map((doctor: any) => ({
+        ...doctor,
+        id: doctor._id,
+      }));
+    } catch (error) {
+      console.error('Error fetching doctors for dispensary IDs:', error);
+      throw new Error('Failed to fetch doctors for dispensary IDs');
+    }
+  },
+
   // Add a new doctor
   addDoctor: async (doctor: Omit<Doctor, 'id' | 'createdAt' | 'updatedAt'>): Promise<Doctor> => {
     try {

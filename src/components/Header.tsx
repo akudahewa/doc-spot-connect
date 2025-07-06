@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -8,9 +7,21 @@ import { useState } from 'react';
 const Header = () => {
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const userStr = localStorage.getItem('current_user');
+  const user = userStr ? JSON.parse(userStr) : null;
   
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('current_user');
+    window.location.href = '/login'; // or use navigate('/login') if using react-router
+  };
+
+  const handleProfile = () => {
+    window.location.href = '/profile'; // or use navigate('/profile')
   };
 
   return (
@@ -19,7 +30,7 @@ const Header = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Calendar className="h-6 w-6 text-medical-600" />
-            <Link to="/" className="font-bold text-xl text-medical-800">
+            <Link to="/admin/dashboard" className="font-bold text-xl text-medical-800">
               DocSpot Connect
             </Link>
           </div>
@@ -82,7 +93,7 @@ const Header = () => {
           ) : (
             <>
               <nav className="flex items-center space-x-8">
-                <Link to="/admin/dashboard" className="text-gray-700 hover:text-medical-600 font-medium">
+                 {/* <Link to="/admin/dashboard" className="text-gray-700 hover:text-medical-600 font-medium">
                   Home
                 </Link>
                 <Link to="/doctors" className="text-gray-700 hover:text-medical-600 font-medium">
@@ -90,22 +101,37 @@ const Header = () => {
                 </Link>
                 <Link to="/contact" className="text-gray-700 hover:text-medical-600 font-medium">
                   Contact
-                </Link>
+                </Link>  */}
               </nav>
-              
-              <div className="flex items-center space-x-4">
-                <Button asChild className="bg-medical-600 hover:bg-medical-700">
-                  <Link to="/booking">
-                    Book Appointment
-                  </Link>
-                </Button>
+              {user ? (
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-700">
+                    <strong>{user.email}</strong>
+                    {" "}({user.role && user.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())})
+                  </span>
+                  <button
+                    onClick={handleProfile}
+                    className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm"
+                  >
+                    Profile
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-1 rounded bg-red-100 hover:bg-red-200 text-sm text-red-700"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
                 
-                <Button asChild variant="outline">
-                  <Link to="/login">
-                    Admin Login
-                  </Link>
-                </Button>
-              </div>
+
+                <Link
+                  to="/login"
+                  className="px-3 py-1 rounded bg-medical-600 hover:bg-medical-700 text-white text-sm"
+                >
+                  Login
+                </Link>
+              )}
             </>
           )}
         </div>

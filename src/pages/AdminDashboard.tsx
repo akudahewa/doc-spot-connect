@@ -35,6 +35,11 @@ const AdminDashboard = () => {
       //try {
         // Get token from local storage
         const token = localStorage.getItem('auth_token');
+        const userStr = localStorage.getItem("current_user");
+        setCurrentUser(userStr ? JSON.parse(userStr) : null);
+        console.log(">>>>>. current user");
+        console.log(currentUser);
+        console.log("=======================");
         console.log('Auth token found:', !!token);
         setIsLoading(false);
         if (!token) {
@@ -47,7 +52,6 @@ const AdminDashboard = () => {
   }, [navigate, toast]);
 
   const handleLogout = () => {
-    console.log("lLLLLLLLLLLL");
     localStorage.removeItem('auth_token');
     localStorage.removeItem('current_user');
     toast({
@@ -90,32 +94,40 @@ const AdminDashboard = () => {
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <div>
+          {/* <div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             <p className="text-gray-500">
-              Welcome back, {currentUser?.name} ({currentUser?.role.replace('_', ' ')})
+              Welcome  {currentUser?.name} ({currentUser?.role.replace('_', ' ')})
             </p>
-          </div>
+          </div> */}
           
-          <div className="mt-4 md:mt-0 space-x-2">
+          {/* <div className="mt-4 md:mt-0 space-x-2">
             <Button onClick={() => navigate('/admin/profile')} variant="outline">
               Profile
             </Button>
             <Button onClick={handleLogout} variant="outline" className="bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700">
               Logout
             </Button>
-          </div>
+          </div> */}
         </div>
         
         <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-2 md:grid-cols-7 mb-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="dispensaries">Dispensaries</TabsTrigger>
-            <TabsTrigger value="doctors">Doctors</TabsTrigger>
-            <TabsTrigger value="bookings">Bookings</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="fee-management">Fee Management</TabsTrigger>
-            <TabsTrigger value="user-dispensary">Assign Users</TabsTrigger>
+            {currentUser?.role === UserRole.SUPER_ADMIN && (
+              <TabsTrigger value="dispensaries">Dispensaries</TabsTrigger>)}
+            {currentUser?.role === UserRole.SUPER_ADMIN && (
+              <TabsTrigger value="doctors">Doctors</TabsTrigger>)}
+            {(currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.HOSPITAL_ADMIN) && (
+              <TabsTrigger value="timeslots">TimeSlots</TabsTrigger>)}
+            {(currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.HOSPITAL_ADMIN) && (
+              <TabsTrigger value="bookings">Bookings</TabsTrigger>)}
+            {(currentUser?.role === UserRole.SUPER_ADMIN || currentUser?.role === UserRole.HOSPITAL_ADMIN) && (
+              <TabsTrigger value="reports">Reports</TabsTrigger>)}
+            {currentUser?.role === UserRole.SUPER_ADMIN && (
+              <TabsTrigger value="fee-management">Fee Management</TabsTrigger>)}
+            {currentUser?.role === UserRole.SUPER_ADMIN && (
+              <TabsTrigger value="user-dispensary">Assign Users</TabsTrigger>)}
           </TabsList>
           
           <TabsContent value="overview" className="space-y-6">
@@ -166,19 +178,7 @@ const AdminDashboard = () => {
             </div>
             
             {/* Add a new Time Slot Management card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Time Slot Management</CardTitle>
-                <CardDescription>
-                  Manage doctor time slots and availability at dispensaries
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4">
-                <Button onClick={() => navigate('/admin/time-slots')} className="bg-medical-600 hover:bg-medical-700">
-                  Manage Time Slots
-                </Button>
-              </CardContent>
-            </Card>
+            
             
             {/* More dashboard content based on role */}
             {currentUser?.role === UserRole.SUPER_ADMIN && (
@@ -290,6 +290,22 @@ const AdminDashboard = () => {
               </CardFooter>
             </Card>
           </TabsContent>
+
+          <TabsContent value="timeslots" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Time Slot Management</CardTitle>
+                <CardDescription>
+                  Manage doctor time slots and availability at dispensaries
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 gap-4">
+                <Button onClick={() => navigate('/admin/time-slots')} className="bg-medical-600 hover:bg-medical-700">
+                  Manage Time Slots
+                </Button>
+              </CardContent>
+            </Card>
+            </TabsContent>
           
           <TabsContent value="bookings" className="space-y-4">
             <Card>
