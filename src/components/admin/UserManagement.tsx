@@ -1,402 +1,422 @@
-
-import { useState, useEffect } from 'react';
-import { useToast } from "@/hooks/use-toast";
-import { AuthService } from '@/api/services/AuthService';
-import { User, UserRole } from '@/api/models';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { DispensaryService } from '@/api/services';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, Plus, Edit, Trash2, Users, UserPlus, AlertCircle } from 'lucide-react';
+import { User, UserRole } from '@/api/models';
+import { AuthService } from '@/api/services';
+import { toast } from 'sonner';
 
 const UserManagement = () => {
-  const { toast } = useToast();
-  const [users, setUsers] = useState<Omit<User, 'passwordHash'>[]>([]);
-  const [dispensaries, setDispensaries] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newUserData, setNewUserData] = useState({
     name: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    role: UserRole.hospital_staff,
-    dispensaryIds: [] as string[],
-    isActive: true
+    role: UserRole.PATIENT
   });
-  
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [updatedUserData, setUpdatedUserData] = useState({
+    name: '',
+    email: '',
+    role: UserRole.PATIENT
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const [usersData, dispensariesData] = await Promise.all([
-          AuthService.getAllUsers(),
-          DispensaryService.getAllDispensaries()
-        ]);
-        setUsers(usersData);
-        setDispensaries(dispensariesData);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load users data.",
-          variant: "destructive",
+        const token = AuthService.getToken();
+        if (!token) {
+          setError('Authentication required');
+          return;
+        }
+
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api'}/users`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch users');
+        }
+
+        const data = await response.json();
+        setUsers(data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch users');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
-    
-    fetchData();
-  }, [toast]);
-  
+
+    fetchUsers();
+  }, []);
+
   const handleCreateUser = async () => {
-    // Validate form
-    if (!formData.name || !formData.email || !formData.password) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Validation Error",
-        description: "Passwords do not match.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+    setIsCreating(true);
     try {
-      const userData = {
-        name: formData.name,
-        email: formData.email,
-        role: formData.role,
-        dispensaryIds: formData.dispensaryIds.length > 0 ? formData.dispensaryIds : undefined,
-        isActive: formData.isActive,
-      };
-      
-      const newUser = await AuthService.createUser(userData, formData.password);
-      
-      if (!newUser) {
-        throw new Error("Failed to create user");
+      const token = AuthService.getToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
       }
-      
-      setUsers(prevUsers => [...prevUsers, newUser]);
-      
-      toast({
-        title: "Success",
-        description: "User created successfully.",
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api'}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newUserData)
       });
-      
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      console.error("Error creating user:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create user. Email may already be in use.",
-        variant: "destructive",
-      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create user');
+      }
+
+      const newUser = await response.json();
+      setUsers([...users, newUser]);
+      setNewUserData({ name: '', email: '', password: '', role: UserRole.PATIENT });
+      toast.success('User created successfully');
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast.error('Failed to create user');
+    } finally {
+      setIsCreating(false);
     }
   };
-  
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      role: UserRole.hospital_staff,
-      dispensaryIds: [],
-      isActive: true
-    });
-  };
-  
-  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+
+    setIsUpdating(true);
     try {
-      const updatedUser = await AuthService.updateUser(userId, { isActive: !currentStatus });
-      
-      if (!updatedUser) {
-        throw new Error("Failed to update user");
+      const token = AuthService.getToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
       }
-      
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId ? { ...user, isActive: !currentStatus } : user
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api'}/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedUserData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user');
+      }
+
+      // Update local state
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === selectedUser.id ? { ...user, ...updatedUserData } : user
         )
       );
-      
-      toast({
-        title: "Success",
-        description: `User ${!currentStatus ? 'activated' : 'deactivated'} successfully.`,
-      });
-    } catch (error) {
-      console.error("Error updating user:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update user status.",
-        variant: "destructive",
-      });
+
+      toast.success('User updated successfully');
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
+    } finally {
+      setIsUpdating(false);
+      setSelectedUser(null);
     }
   };
-  
-  const getRoleName = (role: UserRole) => {
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+
+    setIsDeleting(true);
+    try {
+      const token = AuthService.getToken();
+      if (!token) {
+        toast.error('Authentication required');
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api'}/users/${selectedUser.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete user');
+      }
+
+      // Update local state
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== selectedUser.id));
+      toast.success('User deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast.error('Failed to delete user');
+    } finally {
+      setIsDeleting(false);
+      setSelectedUser(null);
+      setDeleteConfirmationOpen(false);
+    }
+  };
+
+  const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
       case UserRole.SUPER_ADMIN:
-        return 'Super Admin';
-      case UserRole.hospital_admin:
-        return 'Dispensary Admin';
-      case UserRole.hospital_staff:
-        return 'Dispensary Staff';
+        return 'bg-red-100 text-red-800';
+      case UserRole.HOSPITAL_ADMIN:
+        return 'bg-blue-100 text-blue-800';
+      case UserRole.DOCTOR:
+        return 'bg-green-100 text-green-800';
+      case UserRole.PATIENT:
+        return 'bg-gray-100 text-gray-800';
       default:
-        return role;
+        return 'bg-gray-100 text-gray-800';
     }
-  };
-  
-  const getDispensaryNames = (dispensaryIds?: string[]) => {
-    if (!dispensaryIds || !dispensaryIds.length) return 'N/A';
-    
-    return dispensaryIds
-      .map(id => {
-        const dispensary = dispensaries.find(d => d.id === id);
-        return dispensary ? dispensary.name : id;
-      })
-      .join(', ');
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">User Management</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Add New User</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
-              <DialogDescription>
-                Fill in the details to create a new system user.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="col-span-3"
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="email" className="text-right">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="col-span-3"
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="password" className="text-right">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="col-span-3"
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="confirmPassword" className="text-right">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                  className="col-span-3"
-                />
-              </div>
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="role" className="text-right">Role</Label>
-                <Select 
-                  value={formData.role} 
-                  onValueChange={(value) => setFormData({...formData, role: value as UserRole})}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={UserRole.SUPER_ADMIN}>Super Admin</SelectItem>
-                    <SelectItem value={UserRole.hospital_admin}>Dispensary Admin</SelectItem>
-                    <SelectItem value={UserRole.hospital_staff}>Dispensary Staff</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {(formData.role === UserRole.hospital_admin || formData.role === UserRole.hospital_staff) && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="dispensaries" className="text-right">Dispensaries</Label>
-                  <div className="col-span-3">
-                    {dispensaries.map(dispensary => (
-                      <div key={dispensary.id} className="flex items-center space-x-2 mb-2">
-                        <input
-                          type="checkbox"
-                          id={`dispensary-${dispensary.id}`}
-                          checked={formData.dispensaryIds.includes(dispensary.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setFormData({
-                                ...formData,
-                                dispensaryIds: [...formData.dispensaryIds, dispensary.id]
-                              });
-                            } else {
-                              setFormData({
-                                ...formData,
-                                dispensaryIds: formData.dispensaryIds.filter(id => id !== dispensary.id)
-                              });
-                            }
-                          }}
-                          className="h-4 w-4"
-                        />
-                        <label htmlFor={`dispensary-${dispensary.id}`}>{dispensary.name}</label>
-                      </div>
-                    ))}
-                    
-                    {dispensaries.length === 0 && <p className="text-sm text-gray-500">No dispensaries available</p>}
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <Users className="h-5 w-5" />
+          <span>User Management</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="mb-4">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add User
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New User</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Name
+                    </Label>
+                    <Input
+                      id="name"
+                      value={newUserData.name}
+                      onChange={(e) => setNewUserData({ ...newUserData, name: e.target.value })}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="email" className="text-right">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={newUserData.email}
+                      onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="password" className="text-right">
+                      Password
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={newUserData.password}
+                      onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="role" className="text-right">
+                      Role
+                    </Label>
+                    <Select onValueChange={(value) => setNewUserData({ ...newUserData, role: value as UserRole })}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={UserRole.SUPER_ADMIN}>Super Admin</SelectItem>
+                        <SelectItem value={UserRole.HOSPITAL_ADMIN}>Hospital Admin</SelectItem>
+                        <SelectItem value={UserRole.DOCTOR}>Doctor</SelectItem>
+                        <SelectItem value={UserRole.PATIENT}>Patient</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              )}
-              
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="status" className="text-right">Status</Label>
-                <div className="col-span-3 flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="status"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="status">Active</label>
-                </div>
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => {
-                setIsDialogOpen(false);
-                resetForm();
-              }}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateUser}>Create User</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-      
-      {isLoading ? (
-        <div className="flex justify-center p-8">
-          <p>Loading users...</p>
-        </div>
-      ) : (
-        <div className="border rounded-lg">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Dispensaries</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{getRoleName(user.role)}</TableCell>
-                  <TableCell>{getDispensaryNames(user.dispensaryIds)}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      user.isActive 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {user.lastLogin 
-                      ? new Date(user.lastLogin).toLocaleDateString() 
-                      : 'Never'
-                    }
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => toggleUserStatus(user.id, user.isActive)}
-                      >
-                        {user.isActive ? 'Deactivate' : 'Activate'}
-                      </Button>
-                      <Button variant="outline" size="sm">Edit</Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              
-              {users.length === 0 && (
+                <Button onClick={handleCreateUser} disabled={isCreating}>
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create User'
+                  )}
+                </Button>
+              </DialogContent>
+            </Dialog>
+
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
-                    No users found
-                  </TableCell>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.name}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Badge className={getRoleBadgeColor(user.role)}>{user.role}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            setSelectedUser(user);
+                            setUpdatedUserData({ name: user.name, email: user.email, role: user.role });
+                          }}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Edit User</DialogTitle>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="name" className="text-right">
+                                Name
+                              </Label>
+                              <Input
+                                id="name"
+                                value={updatedUserData.name}
+                                onChange={(e) => setUpdatedUserData({ ...updatedUserData, name: e.target.value })}
+                                className="col-span-3"
+                              />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="email" className="text-right">
+                                Email
+                              </Label>
+                              <Input
+                                id="email"
+                                type="email"
+                                value={updatedUserData.email}
+                                onChange={(e) => setUpdatedUserData({ ...updatedUserData, email: e.target.value })}
+                                className="col-span-3"
+                              />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="role" className="text-right">
+                                Role
+                              </Label>
+                              <Select onValueChange={(value) => setUpdatedUserData({ ...updatedUserData, role: value as UserRole })}>
+                                <SelectTrigger className="col-span-3">
+                                  <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value={UserRole.SUPER_ADMIN}>Super Admin</SelectItem>
+                                  <SelectItem value={UserRole.HOSPITAL_ADMIN}>Hospital Admin</SelectItem>
+                                  <SelectItem value={UserRole.DOCTOR}>Doctor</SelectItem>
+                                  <SelectItem value={UserRole.PATIENT}>Patient</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <Button onClick={handleUpdateUser} disabled={isUpdating}>
+                            {isUpdating ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Updating...
+                              </>
+                            ) : (
+                              'Update User'
+                            )}
+                          </Button>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setSelectedUser(user);
+                        setDeleteConfirmationOpen(true);
+                      }}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <Dialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Confirmation</DialogTitle>
+                </DialogHeader>
+                <p className="mb-4">Are you sure you want to delete this user?</p>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="secondary" onClick={() => setDeleteConfirmationOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteUser} disabled={isDeleting}>
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Delete'
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
